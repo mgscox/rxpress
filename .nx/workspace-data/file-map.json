@@ -1,0 +1,89 @@
+{
+  "version": "6.0",
+  "nxVersion": "20.8.2",
+  "pathMappings": {},
+  "nxJsonPlugins": [],
+  "fileMap": {
+    "projectFileMap": {
+      "server": [
+        {
+          "file": "packages/server/package.json",
+          "hash": "13415683410719065468",
+          "deps": [
+            "npm:@types/express",
+            "npm:ts-node",
+            "npm:ts-node-dev",
+            "npm:typescript",
+            "npm:dotenv",
+            "npm:express",
+            "npm:rxjs",
+            "npm:server",
+            "npm:zod"
+          ]
+        },
+        {
+          "file": "packages/server/project.json",
+          "hash": "8987289262775638099"
+        },
+        {
+          "file": "packages/server/scripts/register-ts-node.mjs",
+          "hash": "7279844795552689768"
+        },
+        {
+          "file": "packages/server/src/events/console.app-log.js",
+          "hash": "7839957154154414711"
+        },
+        {
+          "file": "packages/server/src/main.ts",
+          "hash": "11423087215087000414"
+        },
+        {
+          "file": "packages/server/src/services/config.service.ts",
+          "hash": "12114707370998949668"
+        },
+        {
+          "file": "packages/server/src/services/event.service.ts",
+          "hash": "3659179667056742065"
+        },
+        {
+          "file": "packages/server/src/services/logger.service.ts",
+          "hash": "15655370617357511967"
+        },
+        {
+          "file": "packages/server/src/types/index.ts",
+          "hash": "9495646092835589881"
+        },
+        {
+          "file": "packages/server/src/types/rpc.ts",
+          "hash": "15049093948827389199"
+        },
+        {
+          "file": "packages/server/tsconfig.json",
+          "hash": "13072458273984573027"
+        }
+      ]
+    },
+    "nonProjectFiles": [
+      {
+        "file": ".gitignore",
+        "hash": "8587836968507943632"
+      },
+      {
+        "file": "lerna.json",
+        "hash": "1916432883888425386"
+      },
+      {
+        "file": "nx.json",
+        "hash": "2052369154338292028"
+      },
+      {
+        "file": "package-lock.json",
+        "hash": "9799102183149107438"
+      },
+      {
+        "file": "package.json",
+        "hash": "6897293532230756805"
+      }
+    ]
+  }
+}

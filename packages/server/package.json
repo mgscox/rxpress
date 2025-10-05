@@ -3,17 +3,19 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node --import ./scripts/register-ts-node.mjs --enable-source-maps src/main.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "rxjs": "^7.8.2",
+    "server": "^1.0.42",
     "zod": "^4.1.11"
   },
   "devDependencies": {

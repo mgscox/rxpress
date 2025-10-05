@@ -1,6 +1,8 @@
 import * as z from 'zod';
 import type {ZodSchema} from 'zod';
 import type { Request, Response } from 'express';
+import { KVService } from '../services/kv.service.js';
+import { Logger } from '../services/logger.service.js';
 
 export type Emit = (param: {topic: string, data?: unknown}) => void;
 export type AppContext = Record<string, unknown>;
@@ -10,7 +12,15 @@ export type RPCContext = { req: Request; res: Response };
 export type RPCHttpResult = {status?: number, body: string, mime?: string};
 export type RPCApiResult = {status?: number, body: object};
 export type RPCResult = RPCHttpResult | RPCApiResult;
-export type RPCFunction = (req: Request, ctx: {ctx: AppContext, emit: Emit}) => Promise<RPCResult>
+export type RPCFunction = (
+    req: Request, 
+    ctx: {
+        ctx: AppContext, 
+        emit: Emit,
+        kv: KVService,
+        logger: Logger
+    }
+) => Promise<RPCResult>
 export type RPCConfigBase = {
     type: RPCTypes,
     name?: string;

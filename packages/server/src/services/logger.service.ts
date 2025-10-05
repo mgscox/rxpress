@@ -1,5 +1,5 @@
-import { ConfigService } from "./config.service"
-import { EventService } from "./event.service";
+import { ConfigService } from "./config.service.js"
+import { EventService } from "./event.service.js";
 
 const logLevel = ConfigService.env<string>('LOG_LEVEL', 'info');
 
