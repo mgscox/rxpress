@@ -1,4 +1,5 @@
 import { Subject } from "rxjs";
+
 import type { EventConfig, Events } from "../types/index.js";
 
 const events$: Record<string, Subject<unknown>> = {};

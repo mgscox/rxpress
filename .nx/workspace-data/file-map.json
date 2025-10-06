@@ -8,9 +8,10 @@
       "server": [
         {
           "file": "packages/server/package.json",
-          "hash": "13415683410719065468",
+          "hash": "14189859606921263736",
           "deps": [
             "npm:@types/express",
+            "npm:@types/uuid",
             "npm:ts-node",
             "npm:ts-node-dev",
             "npm:typescript",
@@ -31,11 +32,11 @@
         },
         {
           "file": "packages/server/src/events/console.app-log.js",
-          "hash": "7839957154154414711"
+          "hash": "16876646074264895034"
         },
         {
           "file": "packages/server/src/main.ts",
-          "hash": "11423087215087000414"
+          "hash": "6732465230841004255"
         },
         {
           "file": "packages/server/src/services/config.service.ts",
@@ -46,8 +47,12 @@
           "hash": "3659179667056742065"
         },
         {
+          "file": "packages/server/src/services/kv.service.ts",
+          "hash": "2590369359412049235"
+        },
+        {
           "file": "packages/server/src/services/logger.service.ts",
-          "hash": "15655370617357511967"
+          "hash": "14401090524164780215"
         },
         {
           "file": "packages/server/src/types/index.ts",
@@ -55,7 +60,7 @@
         },
         {
           "file": "packages/server/src/types/rpc.ts",
-          "hash": "15049093948827389199"
+          "hash": "756153673644547618"
         },
         {
           "file": "packages/server/tsconfig.json",
@@ -78,11 +83,11 @@
       },
       {
         "file": "package-lock.json",
-        "hash": "9799102183149107438"
+        "hash": "16423442101123835904"
       },
       {
         "file": "package.json",
-        "hash": "6897293532230756805"
+        "hash": "11266572780276644009"
       }
     ]
   }

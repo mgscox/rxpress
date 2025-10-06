@@ -1,16 +1,18 @@
 import * as http from 'node:http'
 import { Subject } from 'rxjs';
 import * as z from 'zod';
-import type { RPCRoutes, Events, RPCContext, AppContext, RPCResult, RPCHttpResult } from './types/index.js';
-import type { Request, Response } from 'express';
-import { EventService } from './services/event.service.js';
-import { globalLogger, Logger } from './services/logger.service.js';
 import { globSync } from 'glob'
 import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
-import { createKv } from './services/kv.service.js';
 import { v4 } from 'uuid';
+
+import type { RPCRoutes, Events, RPCContext, AppContext, RPCResult, RPCHttpResult } from './types/index.js';
+import type { Request, Response } from 'express';
+
+import { EventService } from './services/event.service.js';
+import { globalLogger, Logger } from './services/logger.service.js';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createKv } from './services/kv.service.js';
 
 const app = express();
 const server = http.createServer(app)
@@ -50,7 +52,7 @@ const events: Events = [{
     }
 }];
 
-async function registerEvet(file: string) { 
+async function registerEvent(file: string) { 
     const module = await import( pathToFileURL(file).href )
     EventService.add(module.default);
 }
@@ -60,7 +62,7 @@ async function main() {
     const eventFiles = globSync('*.js', {absolute: true, cwd: join(__dirname, 'events')});
     globalLogger.debug(`Adding event files`, eventFiles)
     await Promise.all(eventFiles.map(async file => {
-        return await registerEvet(file);
+        return await registerEvent(file);
     }));
     const expectedEmitHandlers: string[] = [];
     const router = express.Router();

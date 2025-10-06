@@ -297,6 +297,51 @@
         "hash": "sha512-A8AlzetnS2WIuhijdAzKUyFpR5YbLLfV3luQ4lzBgIBgRfuoBDZeF+RSZPhra+7A6/zTUlrbhKZIOi/MNhqgvQ=="
       }
     },
+    "npm:chalk@4.1.0": {
+      "type": "npm",
+      "name": "npm:chalk@4.1.0",
+      "data": {
+        "version": "4.1.0",
+        "packageName": "chalk",
+        "hash": "sha512-qwx12AxXe2Q5xQ43Ac//I6v5aXTipYrSESdOgzrN+9XjgEpyjpKuvSGaN4qE93f7TQTlerQQ8S+EQ0EyDoVL1A=="
+      }
+    },
+    "npm:chalk": {
+      "type": "npm",
+      "name": "npm:chalk",
+      "data": {
+        "version": "5.6.2",
+        "packageName": "chalk",
+        "hash": "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="
+      }
+    },
+    "npm:chalk@4.1.2": {
+      "type": "npm",
+      "name": "npm:chalk@4.1.2",
+      "data": {
+        "version": "4.1.2",
+        "packageName": "chalk",
+        "hash": "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA=="
+      }
+    },
+    "npm:uuid@10.0.0": {
+      "type": "npm",
+      "name": "npm:uuid@10.0.0",
+      "data": {
+        "version": "10.0.0",
+        "packageName": "uuid",
+        "hash": "sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ=="
+      }
+    },
+    "npm:uuid": {
+      "type": "npm",
+      "name": "npm:uuid",
+      "data": {
+        "version": "13.0.0",
+        "packageName": "uuid",
+        "hash": "sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w=="
+      }
+    },
     "npm:@napi-rs/wasm-runtime": {
       "type": "npm",
       "name": "npm:@napi-rs/wasm-runtime",
@@ -1062,6 +1107,15 @@
         "hash": "sha512-7NQmHra/JILCd1QqpSzl8+mJRc8ZHz3uDm8YV1Ks9IhK0epEiTw8aIErbvH9PI+6XbqhyIQy3462nEsn7UVzjQ=="
       }
     },
+    "npm:@types/uuid": {
+      "type": "npm",
+      "name": "npm:@types/uuid",
+      "data": {
+        "version": "10.0.0",
+        "packageName": "@types/uuid",
+        "hash": "sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ=="
+      }
+    },
     "npm:@yarnpkg/lockfile": {
       "type": "npm",
       "name": "npm:@yarnpkg/lockfile",
@@ -1681,24 +1735,6 @@
         "version": "6.2.2",
         "packageName": "camelcase-keys",
         "hash": "sha512-YrwaA0vEKazPBkn0ipTiMpSajYDSe+KjQfrjhcBMxJt/znbvlHd8Pw/Vamaz5EB4Wfhs3SUR3Z9mwRu/P3s3Yg=="
-      }
-    },
-    "npm:chalk": {
-      "type": "npm",
-      "name": "npm:chalk",
-      "data": {
-        "version": "4.1.0",
-        "packageName": "chalk",
-        "hash": "sha512-qwx12AxXe2Q5xQ43Ac//I6v5aXTipYrSESdOgzrN+9XjgEpyjpKuvSGaN4qE93f7TQTlerQQ8S+EQ0EyDoVL1A=="
-      }
-    },
-    "npm:chalk@4.1.2": {
-      "type": "npm",
-      "name": "npm:chalk@4.1.2",
-      "data": {
-        "version": "4.1.2",
-        "packageName": "chalk",
-        "hash": "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA=="
       }
     },
     "npm:character-parser": {
@@ -6498,15 +6534,6 @@
         "hash": "sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA=="
       }
     },
-    "npm:uuid": {
-      "type": "npm",
-      "name": "npm:uuid",
-      "data": {
-        "version": "10.0.0",
-        "packageName": "uuid",
-        "hash": "sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ=="
-      }
-    },
     "npm:v8-compile-cache-lib": {
       "type": "npm",
       "name": "npm:v8-compile-cache-lib",
@@ -6935,7 +6962,7 @@
     },
     {
       "source": "npm:@lerna/create",
-      "target": "npm:chalk",
+      "target": "npm:chalk@4.1.0",
       "type": "static"
     },
     {
@@ -7200,7 +7227,7 @@
     },
     {
       "source": "npm:@lerna/create",
-      "target": "npm:uuid",
+      "target": "npm:uuid@10.0.0",
       "type": "static"
     },
     {
@@ -7236,6 +7263,16 @@
     {
       "source": "npm:@lerna/create",
       "target": "npm:yargs-parser",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.0",
+      "target": "npm:ansi-styles",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.0",
+      "target": "npm:supports-color",
       "type": "static"
     },
     {
@@ -8336,16 +8373,6 @@
     {
       "source": "npm:camelcase-keys",
       "target": "npm:quick-lru",
-      "type": "static"
-    },
-    {
-      "source": "npm:chalk",
-      "target": "npm:ansi-styles",
-      "type": "static"
-    },
-    {
-      "source": "npm:chalk",
-      "target": "npm:supports-color",
       "type": "static"
     },
     {
@@ -10165,7 +10192,7 @@
     },
     {
       "source": "npm:jest-diff",
-      "target": "npm:chalk",
+      "target": "npm:chalk@4.1.2",
       "type": "static"
     },
     {
@@ -10181,6 +10208,16 @@
     {
       "source": "npm:jest-diff",
       "target": "npm:pretty-format",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:ansi-styles",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:supports-color",
       "type": "static"
     },
     {
@@ -10265,7 +10302,7 @@
     },
     {
       "source": "npm:lerna",
-      "target": "npm:chalk",
+      "target": "npm:chalk@4.1.0",
       "type": "static"
     },
     {
@@ -10575,7 +10612,7 @@
     },
     {
       "source": "npm:lerna",
-      "target": "npm:uuid",
+      "target": "npm:uuid@10.0.0",
       "type": "static"
     },
     {
@@ -10611,6 +10648,16 @@
     {
       "source": "npm:lerna",
       "target": "npm:yargs-parser",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.0",
+      "target": "npm:ansi-styles",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.0",
+      "target": "npm:supports-color",
       "type": "static"
     },
     {
@@ -10695,12 +10742,22 @@
     },
     {
       "source": "npm:log-symbols",
-      "target": "npm:chalk",
+      "target": "npm:chalk@4.1.2",
       "type": "static"
     },
     {
       "source": "npm:log-symbols",
       "target": "npm:is-unicode-supported",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:ansi-styles",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:supports-color",
       "type": "static"
     },
     {
@@ -11285,7 +11342,7 @@
     },
     {
       "source": "npm:nx",
-      "target": "npm:chalk",
+      "target": "npm:chalk@4.1.2",
       "type": "static"
     },
     {
@@ -11484,6 +11541,16 @@
       "type": "static"
     },
     {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:ansi-styles",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:supports-color",
+      "type": "static"
+    },
+    {
       "source": "npm:minimatch@9.0.3",
       "target": "npm:brace-expansion@2.0.2",
       "type": "static"
@@ -11495,7 +11562,7 @@
     },
     {
       "source": "npm:ora@5.3.0",
-      "target": "npm:chalk",
+      "target": "npm:chalk@4.1.2",
       "type": "static"
     },
     {
@@ -11565,7 +11632,7 @@
     },
     {
       "source": "npm:ora",
-      "target": "npm:chalk",
+      "target": "npm:chalk@4.1.2",
       "type": "static"
     },
     {
@@ -11601,6 +11668,16 @@
     {
       "source": "npm:ora",
       "target": "npm:wcwidth",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:ansi-styles",
+      "type": "static"
+    },
+    {
+      "source": "npm:chalk@4.1.2",
+      "target": "npm:supports-color",
       "type": "static"
     },
     {
