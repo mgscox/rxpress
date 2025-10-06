@@ -1,6 +1,7 @@
-import { Loglevel } from "./logger.types";
+import * as express from 'express';
+import * as bodyParser from "body-parser";
 
 export type RxpressConfig = {
-    flowsDir: string,
-    logLevel: Loglevel,
+    port?: number;
+    json?: bodyParser.OptionsJson
 }
