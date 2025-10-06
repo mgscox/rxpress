@@ -2,7 +2,7 @@ import * as http from 'node:http'
 import { Subject } from 'rxjs';
 import * as z from 'zod';
 import { globSync } from 'glob'
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import express from 'express';
 import { v4 } from 'uuid';
 
@@ -75,9 +75,8 @@ async function main() {
     for(const route of httpRoutes) {
         const signature = `${route.method}::${route.path}`.toLowerCase()
         const pub$ = new Subject<RPCContext>()
-        const method = route.method.toLowerCase();
+        const method = route.method.toLowerCase() as keyof typeof router & 'get' | 'post' | 'put' | 'delete';
         pubs$[signature] = pub$
-        //@ts-expect-error
         router[method](route.path, ...route.middleware, (req: Request, res: Response) => {
             pubs$[signature]?.next({ req, res })
         });
@@ -89,7 +88,7 @@ async function main() {
                         try {
                             reason.message = JSON.parse(reason.message);
                         }
-                        catch {}
+                        catch { /* throw error away - message field wasnt JSON */ }
                     }
                     return {
                         error,

@@ -1,0 +1,17 @@
+0 silly argv {
+0 silly argv   _: [ 'create' ],
+0 silly argv   yes: true,
+0 silly argv   y: true,
+0 silly argv   lernaVersion: '8.2.4',
+0 silly argv   '$0': 'lerna',
+0 silly argv   name: 'rxpress'
+0 silly argv }
+1 notice cli v8.2.4
+2 verbose packageConfigs Explicit "packages" configuration found in lerna.json. Resolving packages using the configured glob(s): ["packages/*"]
+3 verbose rootPath /home/user/workspace/newintel
+4 error Error: Command failed with exit code 1: git config --get user.email
+4 error     at makeError (/home/user/workspace/newintel/node_modules/execa/lib/error.js:59:11)
+4 error     at module.exports.sync (/home/user/workspace/newintel/node_modules/execa/index.js:186:17)
+4 error     at execSync (/home/user/workspace/newintel/node_modules/@lerna/create/dist/command.js:1681:31)
+4 error     at CreateCommand.gitConfig (/home/user/workspace/newintel/node_modules/@lerna/create/dist/command.js:5699:16)
+4 error     at CreateCommand.initialize (/home/user/workspace/newintel/node_modules/@lerna/create/dist/command.js:5633:51)
