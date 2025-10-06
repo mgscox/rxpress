@@ -161,7 +161,7 @@ async function main() {
                         ctx, 
                         emit: EventService.emit, 
                         kv, 
-                        logger: new Logger
+                        logger: new Logger()
                     })
                 }
                 catch (reason) {
