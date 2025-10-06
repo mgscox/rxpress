@@ -1,13 +1,14 @@
 import * as express from 'express';
 import {Request, Response} from 'express';
-import { RPCConfig, RPCContext, RPCHttpResult, RPCResult } from "../types/rpc.types";
 import { Subject } from 'rxjs';
 import * as z from 'zod';
+
+import { RPCConfig, RPCContext, RPCHttpResult, RPCResult } from "../types/rpc.types";
 import { EventService } from './event.service';
 import { Logger } from '../types/logger.types';
 import { KVBase } from '../types/kv.types';
 
-export namespace Route {
+export namespace RouteService {
     const pubs$: Record<string, Subject<RPCContext>> = {};
 
     const getPayload = (param:{error: string, reason: unknown, route: RPCConfig, req: Request}) => {
@@ -60,86 +61,86 @@ export namespace Route {
         const {req, res, route, logger, kv} = param;
         let result!: RPCResult;
         if (!!route.bodySchema) {
-        try {
-            route.bodySchema.parse(req.body)
-        }
-        catch (reason) {
-            const payload = getPayload({error: `Invalid request body payload`, reason: `${reason}`, route, req})
-            if (handleError({payload, route, res})) {
-                return;
-            }
-        }
-    }
-
-    if (!!route.queryParams) {
-        try {
-            route.queryParams.parse(req.params)
-        }
-        catch (reason) {
-            const payload = getPayload({error: `Invalid request parameters`, reason: `${reason}`, route, req})
-            if (handleError({payload, route, res})) {
-                return;
-            }
-        }
-    }
-
-    try {
-        result = await route.handler(req, {
-            emit: EventService.emit, 
-            kv, 
-            logger,
-        })
-    }
-    catch (reason) {
-        result = {
-            status: 500,
-            body: {
-                error: `${reason}`
-            }
-        }
-    }
-    finally {
-        if (!!route.responseSchema) {
-            const toParse = (route.responseSchema instanceof z.ZodObject)
-                ? route.responseSchema
-                : route.responseSchema[result.status || 200] || z.object({error: z.string()});
-
             try {
-                toParse.parse(result.body);
+                route.bodySchema.parse(req.body)
             }
             catch (reason) {
-                const payload = getPayload({error: `Invalid API Response`, reason: `${reason}`, route, req});
+                const payload = getPayload({error: `Invalid request body payload`, reason: `${reason}`, route, req})
                 if (handleError({payload, route, res})) {
                     return;
                 }
             }
         }
-    }
 
-    try {
-        switch (route.type) {
-            case 'http': {
-                const httpResult = result as RPCHttpResult;
-                res.contentType(httpResult.mime || 'text/html')
-                res.status(result.status || 200).send(`${result.body}`);
-                break;
+        if (!!route.queryParams) {
+            try {
+                route.queryParams.parse(req.params)
             }
-            case 'api': {
-                res.contentType('application/json')
-                res.status(result.status || 200).json(result.body);
-                break;
+            catch (reason) {
+                const payload = getPayload({error: `Invalid request parameters`, reason: `${reason}`, route, req})
+                if (handleError({payload, route, res})) {
+                    return;
+                }
             }
         }
-    }
-    catch (reason) {
-        console.error(reason);
-        const payload = getPayload({error: `Invalid API response`, reason: `${reason}`, route, req})
-        handleError({payload, code: 500, route, res});
-    }
+
+        try {
+            result = await route.handler(req, {
+                emit: EventService.emit, 
+                kv, 
+                logger,
+            })
+        }
+        catch (reason) {
+            result = {
+                status: 500,
+                body: {
+                    error: `${reason}`
+                }
+            }
+        }
+        finally {
+            if (!!route.responseSchema) {
+                const toParse = (route.responseSchema instanceof z.ZodObject)
+                    ? route.responseSchema
+                    : route.responseSchema[result.status || 200] || z.object({error: z.string()});
+
+                try {
+                    toParse.parse(result.body);
+                }
+                catch (reason) {
+                    const payload = getPayload({error: `Invalid API Response`, reason: `${reason}`, route, req});
+                    if (handleError({payload, route, res})) {
+                        return;
+                    }
+                }
+            }
+        }
+
+        try {
+            switch (route.type) {
+                case 'http': {
+                    const httpResult = result as RPCHttpResult;
+                    res.contentType(httpResult.mime || 'text/html')
+                    res.status(result.status || 200).send(`${result.body}`);
+                    break;
+                }
+                case 'api': {
+                    res.contentType('application/json')
+                    res.status(result.status || 200).json(result.body);
+                    break;
+                }
+            }
+        }
+        catch (reason) {
+            console.error(reason);
+            const payload = getPayload({error: `Invalid API response`, reason: `${reason}`, route, req})
+            handleError({payload, code: 500, route, res});
+        }
     }
     export function addHandler(route: RPCConfig, logger: Logger, kv: KVBase): express.Router {
         const router = express.Router(); 
-        const signature = `${route.method}::${route.path}`.toLowerCase()
+        const signature = `${route.flow ? route.flow + '_' : ''}${route.method}::${route.path}`.toLowerCase()
         const pub$ = new Subject<RPCContext>()
         const method = route.method.toLowerCase() as keyof typeof router & 'get' | 'post' | 'put' | 'delete';
         pubs$[signature] = pub$
@@ -150,5 +151,8 @@ export namespace Route {
             next: ({req, res}) => runHandler({req, res, route, logger, kv})
         });
         return router;
+    }
+    export const close = () => {
+        Object.values(pubs$).forEach(pub => pub.complete());
     }
 }
