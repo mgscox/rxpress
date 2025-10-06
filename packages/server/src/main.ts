@@ -44,12 +44,6 @@ const events: Events = [{
     handler: async function(input, {trigger}) { 
         globalLogger.log({level: 'info', msg: input, trigger}); 
     }
-}, {
-    subscribe: ['app::warning'],
-    handler: async function(input, {trigger}) { 
-        input = `string` === typeof input ? input : JSON.stringify(input, null, 2)
-        globalLogger.warn('warning', {input, trigger}); 
-    }
 }];
 
 async function registerEvent(file: string) { 
@@ -91,8 +85,14 @@ async function main() {
         });
         pubs$[signature].subscribe({
             next: async ({ req, res }) => {
-                const getPayload = (param:{error: string, reason: string}) => {
+                const getPayload = (param:{error: string, reason: unknown}) => {
                     const {error, reason} = param;
+                    if (reason instanceof Error) {
+                        try {
+                            reason.message = JSON.parse(reason.message);
+                        }
+                        catch {}
+                    }
                     return {
                         error,
                         reason,
@@ -184,7 +184,7 @@ async function main() {
                             toParse.parse(result.body);
                         }
                         catch (reason) {
-                            const payload = getPayload({error: `Invalid API response`, reason: `${reason}`})
+                            const payload = getPayload({error: `Invalid API response`, reason})
                             if (handleError(payload)) {
                                 return;
                             }
