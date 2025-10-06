@@ -11,15 +11,13 @@ import type { Request, Response } from 'express';
 
 import { EventService } from './services/event.service.js';
 import { globalLogger, Logger } from './services/logger.service.js';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { createKv } from './services/kv.service.js';
+import { ConfigService } from './services/config.service.js';
 
 const app = express();
 const server = http.createServer(app)
 app.use(express.json());
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const routes: RPCRoutes = [{
     method: 'GET',
@@ -53,7 +51,7 @@ async function registerEvent(file: string) {
 
 async function main() { 
     EventService.add(events);
-    const eventFiles = globSync('*.js', {absolute: true, cwd: join(__dirname, 'events')});
+    const eventFiles = globSync('*.js', {absolute: true, cwd: join(ConfigService.__rootDir, 'src/events')});
     globalLogger.debug(`Adding event files`, eventFiles)
     await Promise.all(eventFiles.map(async file => {
         return await registerEvent(file);

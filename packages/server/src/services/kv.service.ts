@@ -1,4 +1,7 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+
+import { ConfigService } from './config.service.js';
+import { dirname, join } from 'node:path';
 
 export class KVService {
     private store: Record<string, string> = {};
@@ -7,8 +10,12 @@ export class KVService {
     persist(file: string): void {
         this.storeFile = file;
         if (existsSync(file)) {
-            const data = JSON.parse( String( writeFileSync(file, 'utf-8') ) );
+            const data = JSON.parse( readFileSync(file, 'utf-8') );
             Object.assign(this.store, data);
+        }
+        else {
+            mkdirSync(dirname(file), {recursive: true});
+            this.save();
         }
     }
 
@@ -42,7 +49,8 @@ export class KVService {
 export const createKv = (id: string, persist = false): KVService => {
     const kv = new KVService();
     if (persist) {
-        kv.persist(`./data/kv-${id}.json`);
+        kv.persist( join(ConfigService.__rootDir,`data/kv-${id}.json`) );
     }
+    kv.set('kv-id', id)
     return kv;
 }
