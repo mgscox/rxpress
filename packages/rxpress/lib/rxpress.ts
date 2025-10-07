@@ -9,26 +9,30 @@ import { Logger } from './types/logger.types';
 import { KVBase } from './types/kv.types';
 import { CronService } from './services/cron.service';
 import { CronConfig, EventConfig, RPCConfig, RxpressConfig } from './types';
+import { MetricService } from './services/metrics.service';
 
 export namespace rxpress {
-    var app: express.Express;
+    export var app: express.Express;
     var server: http.Server;
     var logger: Logger;
     var kv: KVBase;
     var config: RxpressConfig;
     export function init(param: {config: RxpressConfig, logger: Logger, kv: KVBase}) {
+        if (config.metrics) {
+            MetricService.start(config.metrics);
+        }
         if (config.processHandlers) {
             addProcessHandlers();
         }
         config = param.config;
         logger = param.logger;
         kv = param.kv;
-    }
-    export function createServer(port = 3000): Promise<{server: http.Server, port: number}> {
         app = express();
         app.use(express.json(config.json));
-        server = http.createServer(app);
+    }
+    export function createServer(port = 3000): Promise<{server: http.Server, port: number}> {
         return new Promise((resolve, reject) => {
+            server = http.createServer(app);
             const listenPort = config.port || port;
             server.on('error', (e) => {
                 reject(`${e}`)
@@ -129,14 +133,15 @@ export namespace rxpress {
         const server = await createServer(port);
         return server;
     }
-    export function stop(): Promise<void> {
+    export async function stop(): Promise<void> {
         EventService.emit({topic: 'SYS::SHUTDOWN', data: {}});
         EventService.close();
         RouteService.close();
         CronService.close();
-        return new Promise(resolve => {
-            server.close(() => resolve());
-        })
+        await Promise.all([
+            MetricService.stop(),
+            server.close(),
+        ]);
     }
     function addProcessHandlers() {
         process.on('SIGTERM', async () => {
