@@ -10,6 +10,7 @@ import { KVBase } from './types/kv.types';
 import { CronService } from './services/cron.service';
 import { CronConfig, EventConfig, RPCConfig, RxpressConfig } from './types';
 import { MetricService } from './services/metrics.service';
+import { ConfigService } from './services/config.service';
 
 export namespace rxpress {
     export var app: express.Express;
@@ -18,6 +19,9 @@ export namespace rxpress {
     var kv: KVBase;
     var config: RxpressConfig;
     export function init(param: {config: RxpressConfig, logger: Logger, kv: KVBase}) {
+        if (config.loadEnv !== false) {
+            ConfigService.loadEnv();
+        }
         if (config.metrics) {
             MetricService.start(config.metrics);
         }
