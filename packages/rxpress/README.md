@@ -10,26 +10,17 @@ npm install rxpress
 
 ## Quick Start (ESM)
 
+Example adapters live under [`src/helpers/`](./src/helpers). Import them into your application or treat them as blueprints for your own infrastructure.
+
 ```ts
 import { rxpress } from 'rxpress';
-import type { Logger, KVBase, RPCConfig } from 'rxpress/types';
+import type { RPCConfig } from 'rxpress/types';
 
-const logger: Logger = {
-  child: () => logger,
-  info: (msg, meta) => console.info(msg, meta),
-  error: (msg, meta) => console.error(msg, meta),
-  debug: (msg, meta) => console.debug(msg, meta),
-  warn: (msg, meta) => console.warn(msg, meta),
-  log: (payload) => console.log(payload),
-};
+import { createSimpleLogger } from './src/helpers/simple-logger.service.js';
+import { createMemoryKv } from './src/helpers/memory-kv.service.js';
 
-const store = new Map<string, unknown>();
-const kv: KVBase = {
-  set: (key, value) => { store.set(key, value); },
-  get: (key) => store.get(key),
-  has: (key) => store.has(key),
-  del: (key) => { store.delete(key); },
-};
+const logger = createSimpleLogger();
+const kv = createMemoryKv('example-app');
 
 const routes: RPCConfig[] = [
   {
@@ -61,4 +52,4 @@ await rxpress.start({ port: 3000 });
 
 ## Adapters
 
-Bring your own logger and KV implementations. The interfaces live in `rxpress/src/types`. We intend to ship optional adapter packages (console logger, in-memory KV, Redis-backed KV) in a future release.
+Bring your own logger and KV implementations. The helper implementations in [`src/helpers/simple-logger.service.ts`](./src/helpers/simple-logger.service.ts) and [`src/helpers/memory-kv.service.ts`](./src/helpers/memory-kv.service.ts) are small, copyable examples. The library keeps adapters out of the publish payload so you can supply console, pino, Redis, memory, or any other implementation that matches the interfaces in `rxpress/src/types`.
