@@ -1,250 +1,101 @@
-import * as http from 'node:http'
-import { Subject } from 'rxjs';
-import * as z from 'zod';
-import { globSync } from 'glob'
 import { join } from 'node:path';
-import express from 'express';
-import { v4 } from 'uuid';
 
-import type { RPCRoutes, Events, RPCContext, AppContext, RPCResult, RPCHttpResult } from './types/index.js';
-import type { Request, Response } from 'express';
+import * as z from 'zod';
+import { rxpress, ConfigService, helpers } from 'rxpress';
+import type { RPCConfig, EventConfig, Request } from 'rxpress';
+import { AddressInfo } from 'node:net';
 
-import { EventService } from './services/event.service.js';
-import { globalLogger, Logger } from './services/logger.service.js';
-import { pathToFileURL } from 'node:url';
-import { createKv } from './services/kv.service.js';
-import { ConfigService } from './services/config.service.js';
+const routes: RPCConfig[] = [
+  {
+    type: 'api',
+    method: 'GET',
+    path: '/api/v1/example',
+    middleware: [],
+    emits: ['do-log', 'another-emit'],
+    strict: false,                              // strict is false - response will be sent to client even if responseSchema fails checks
+    responseSchema: {
+      200: z.object({ response: z.string() }),  // this does NOT match return object in Handler function ('response' vs 'result') - will cause a warning
+    },
+    handler: async (req: Request, { emit, logger }) => {
+      const payload = {
+        level: 'info',
+        time: Date.now(),
+        msg: `Payload for a "do-log" event emitted from HTTP handler`,
+        meta: { 
+          method: req.method,
+          path: req.path,
+        },
+      };
+      logger.info('Logger called: Handled API request', payload.meta);
+      emit({ topic: 'do-log', data: payload });
 
-const app = express();
-const server = http.createServer(app)
-app.use(express.json());
-
-const routes: RPCRoutes = [{
+      //HTTP 200 status, with JSON payload (as this is a 'api' hanlder)
+      const hanlderResult = { status: 200, body: { result: 'Hello World!' } };
+      emit({topic: 'another-emit', data: hanlderResult})
+      return hanlderResult;
+    },
+  },
+  {
+    type: 'http',
     method: 'GET',
     path: '/',
     middleware: [],
-    type: 'api',
-    emits: ['do-log'],
-    responseSchema: {
-        200: z.object({wibble: z.string()}),
+    emits: ['do-log', 'another-emit'],
+    handler: async (req: Request, { emit, logger }) => {
+      const payload = {
+        level: 'info',
+        time: Date.now(),
+        msg: `Payload for a "do-log" event emitted from HTTP handler`,
+        meta: { 
+          method: req.method,
+          path: req.path,
+        },
+      };
+      logger.info('Logger called: Handled HTTP request', payload.meta);
+      emit({ topic: 'do-log', data: payload });
+
+      //HTTP 200 status, with HTML payload (as this is a 'api' hanlder)
+      const hanlderResult = { status: 200, body: '<h1>Hello World!</h1>' };
+      emit({topic: 'another-emit', data: hanlderResult})
+      return hanlderResult;
     },
-    strict: false,
-    handler: async function(req, {ctx, emit}) { 
-        emit({
-            topic: 'do-log',
-            data: `Hello from ${req.path}`
-        })
-        return {body: {result: 'Hello World!'}};
-    }
-}];
-const events: Events = [{
-    subscribe: ['do-log'],
-    handler: async function(input, {trigger}) { 
-        globalLogger.log({level: 'info', msg: input, trigger}); 
-    }
-}];
+  },
+];
 
-async function registerEvent(file: string) { 
-    const module = await import( pathToFileURL(file).href )
-    EventService.add(module.default);
+const inlineEvents: EventConfig[] = [
+  {
+    subscribe: ['another-emit'],
+    handler: async (input, {logger}) => {
+      const payload = input as { status: string; body: Record<string, unknown> };
+      logger.info(`Inline configured event triggered`, payload);
+    },
+  },
+];
+
+async function main() {
+  const port = Number.parseInt(ConfigService.env('PORT', '3002'), 10);
+  const __dirname = ConfigService.getDirname(import.meta.url);
+  rxpress.init({
+    config: {
+      port,
+      loadEnv: false,
+      processHandlers: true,
+    },
+    logger: helpers.simplelLogger,
+    kv: helpers.createMemoryKv('server', false),
+  });
+
+  rxpress.addEvents(inlineEvents);
+  await rxpress.load({ eventDir: join(__dirname, '..', 'src', 'events') });
+  rxpress.addHandlers(routes);
+
+  const { server, port: boundPort } = await rxpress.start({ port });
+  const host = server.address() as AddressInfo;
+  helpers.simplelLogger.info(`rxpress server is running http://${host.address}:${boundPort}`);
 }
 
-async function main() { 
-    EventService.add(events);
-    const eventFiles = globSync('*.js', {absolute: true, cwd: join(ConfigService.__rootDir, 'src/events')});
-    globalLogger.debug(`Adding event files`, eventFiles)
-    await Promise.all(eventFiles.map(async file => {
-        return await registerEvent(file);
-    }));
-    const expectedEmitHandlers: string[] = [];
-    const router = express.Router();
-    const pubs$: Record<string, Subject<RPCContext>> = {};
-
-    const ctx: AppContext = {};
-
-    for (const entry of [...routes, ...events]) {
-        if (entry.emits) {
-            for (const topic of entry.emits) {
-                if (!expectedEmitHandlers.includes(topic)) {
-                    expectedEmitHandlers.push(topic);
-                }
-            }
-        }
-    }
-    const httpRoutes = routes.filter(r => ['http', 'api'].includes(r.type));
-    for(const route of httpRoutes) {
-        const signature = `${route.method}::${route.path}`.toLowerCase()
-        const pub$ = new Subject<RPCContext>()
-        const method = route.method.toLowerCase() as keyof typeof router & 'get' | 'post' | 'put' | 'delete';
-        pubs$[signature] = pub$
-        router[method](route.path, ...route.middleware, (req: Request, res: Response) => {
-            pubs$[signature]?.next({ req, res })
-        });
-        pubs$[signature].subscribe({
-            next: async ({ req, res }) => {
-                const getPayload = (param:{error: string, reason: unknown}) => {
-                    const {error, reason} = param;
-                    if (reason instanceof Error) {
-                        try {
-                            reason.message = JSON.parse(reason.message);
-                        }
-                        catch { /* throw error away - message field wasnt JSON */ }
-                    }
-                    return {
-                        error,
-                        reason,
-                        route: {
-                            ...route,
-                            bodySchema: route.bodySchema ? z.toJSONSchema( route.bodySchema as any ) : undefined,
-                            queryParams: route.queryParams ? z.toJSONSchema( route.queryParams as any ) : undefined,
-                            responseSchema: route.responseSchema 
-                                ? (route.responseSchema instanceof z.ZodObject)
-                                    ? z.toJSONSchema( route.responseSchema ) 
-                                    : Object.entries( route.responseSchema as Record<number, z.ZodObject<any>> )
-                                        .map(([code, schema]) => ({statusCode: code,  schema: z.toJSONSchema(schema)}))
-                                : undefined,
-                        },
-                        req: {
-                            headers: req.headers,
-                            body: req.body,
-                        }
-                    }
-                }
-                const handleError = (payload: Record<string, unknown>, code?: number): boolean => {
-                    globalLogger.warn(
-                        'Server route error',
-                        payload,
-                    )
-                    if (route.strict || code === 500) {
-                        res.status(code || 422);
-                        if (route.type === 'api') {
-                            res.json(payload);
-                        }
-                        else {
-                            res.send(payload);
-                        }
-                        return true;
-                    }
-                    return false;
-                }
-
-                let result!: RPCResult;
-                const kv = createKv(v4(), false);
-
-                if (!!route.bodySchema) {
-                    try {
-                        route.bodySchema.parse(req.body)
-                    }
-                    catch (reason) {
-                        const payload = getPayload({error: `Invalid request body payload`, reason: `${reason}`})
-                        if (handleError(payload)) {
-                            return;
-                        }
-                    }
-                }
-
-                if (!!route.queryParams) {
-                    try {
-                        route.queryParams.parse(req.params)
-                    }
-                    catch (reason) {
-                        const payload = getPayload({error: `Invalid request parameters`, reason: `${reason}`});
-                        if (handleError(payload)) {
-                            return;
-                        }
-                    }
-                }
-
-                try {
-                    result = await route.handler(req, {
-                        ctx, 
-                        emit: EventService.emit, 
-                        kv, 
-                        logger: new Logger()
-                    })
-                }
-                catch (reason) {
-                    result = {
-                        status: 500,
-                        body: {
-                            error: `${reason}`
-                        }
-                    }
-                }
-                finally {
-                    if (!!route.responseSchema) {
-                        const toParse = (route.responseSchema instanceof z.ZodObject)
-                            ? route.responseSchema
-                            : route.responseSchema[result.status || 200] || z.object({error: z.string()});
-
-                        try {
-                            toParse.parse(result.body);
-                        }
-                        catch (reason) {
-                            const payload = getPayload({error: `Invalid API response`, reason})
-                            if (handleError(payload)) {
-                                return;
-                            }
-                        }
-                    }
-                }
-
-                try {
-                    switch (route.type) {
-                        case 'http': {
-                            const httpResult = result as RPCHttpResult;
-                            res.contentType(httpResult.mime || 'text/html')
-                            res.status(result.status || 200).send(`${result.body}`);
-                            break;
-                        }
-                        case 'api': {
-                            res.contentType('application/json')
-                            res.status(result.status || 200).json(result.body);
-                            break;
-                        }
-                    }
-                }
-                catch (reason) {
-                    console.error(reason);
-                    const payload = getPayload({error: `Invalid API response`, reason: `${reason}`})
-                    handleError(payload, 500);
-                }
-            },
-            error(err) {
-                console.error(err)
-            },
-        });
-        globalLogger.info(`Added route ${signature}`)
-    };
-
-    for (const trigger of expectedEmitHandlers) {
-        if (!EventService.has(trigger)) {
-            console.warn(`Missing event handler for ${trigger}`)
-        }
-    }
-    app.use(router)
-
-    server.on('error', (error) => {
-        console.error('Server error:', error)
-    });
-    server.on('close', () => {
-        Object.keys(pubs$).forEach(key => pubs$[key]?.complete());
-        EventService.close();
-        console.info('Server closed')
-    });
-    const PORT = parseInt(process.env.PORT || '3002', 10);
-    server.listen(PORT, () => {
-        globalLogger.info(`Server is running on port ${PORT}`);
-    });
-}
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+main().catch(async (error) => {
+  console.error('Fatal error starting server:', error);
+  await rxpress.stop(true);
+  process.exit(1);
 });
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-main()
-    .catch(err => {
-        console.error('Fatal error starting server:', err);
-        process.exit(1);
-    });

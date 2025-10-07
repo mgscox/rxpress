@@ -1,27 +1,67 @@
 {
   "name": "rxpress",
-  "version": "0.0.0",
-  "description": "Now I’m the model of a modern major general / The venerated Virginian veteran whose men are all / Lining up, to put me up on a pedestal / Writin’ letters to relatives / Embellishin’ my elegance and eloquence / But the elephant is in the room / The truth is in ya face when ya hear the British cannons go / BOOM",
-  "keywords": [],
+  "version": "0.1.0",
+  "description": "Reactive Express orchestration toolkit for RxJS-powered RPC, event, and cron workflows.",
+  "keywords": [
+    "express",
+    "rxjs",
+    "rpc",
+    "events",
+    "http"
+  ],
   "author": "Matt Cox <mattgscox@hotmail.com>",
   "license": "ISC",
-  "main": "lib/rxpress.js",
+  "main": "./dist/index.js",
   "directories": {
-    "lib": "lib",
+    "lib": "src",
     "test": "__tests__"
   },
   "files": [
-    "lib"
+    "dist",
+    "README.md"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgscox/newintel.git"
   },
   "scripts": {
-    "test": "node ./__tests__/rxpress.test.js"
+    "test": "node --loader ts-node/esm ./__tests__/run.ts",
+    "build": "tsc -p .",
+    "clean": "rimraf dist"
   },
   "bugs": {
     "url": "https://github.com/mgscox/newintel/issues"
   },
-  "homepage": "https://github.com/mgscox/newintel#readme"
+  "homepage": "https://github.com/mgscox/newintel#readme",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2"
+  },
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.65.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.206.0",
+    "@opentelemetry/host-metrics": "^0.36.2",
+    "@opentelemetry/instrumentation-runtime-node": "^0.20.0",
+    "@opentelemetry/sdk-metrics": "^2.1.0",
+    "@opentelemetry/sdk-node": "^0.206.0",
+    "cron": "^4.3.3",
+    "express": "^5.1.0",
+    "glob": "^10.4.5",
+    "rxjs": "^7.8.2",
+    "zod": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }

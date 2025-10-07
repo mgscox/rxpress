@@ -1,29 +1,28 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-
-import { ConfigService } from './config.service.js';
 import { dirname, join } from 'node:path';
 
-export class KVService {
-    private store: Record<string, string> = {};
+import { ConfigService } from 'rxpress';
+
+export class MemoryKVService {
+    private store: Record<string, unknown> = {};
     private storeFile: string | null = null;
 
     persist(file: string): void {
         this.storeFile = file;
         if (existsSync(file)) {
-            const data = JSON.parse( readFileSync(file, 'utf-8') );
+            const data = JSON.parse(readFileSync(file, 'utf-8')) as Record<string, unknown>;
             Object.assign(this.store, data);
-        }
-        else {
-            mkdirSync(dirname(file), {recursive: true});
+        } else {
+            mkdirSync(dirname(file), { recursive: true });
             this.save();
         }
     }
 
-    get(key: string): string | undefined {
-        return this.store[key];
+    get<T = unknown>(key: string): T | undefined {
+        return this.store[key] as T | undefined;
     }
-    
-    set(key: string, value: string): void {
+
+    set<T = unknown>(key: string, value: T): void {
         this.store[key] = value;
         this.save();
     }
@@ -31,7 +30,7 @@ export class KVService {
     has(key: string): boolean {
         return key in this.store;
     }
-    
+
     del(key: string): void {
         delete this.store[key];
         this.save();
@@ -43,14 +42,14 @@ export class KVService {
             writeFileSync(this.storeFile, data, 'utf-8');
         }
     }
-
 }
 
-export const createKv = (id: string, persist = false): KVService => {
-    const kv = new KVService();
+export const createMemoryKv = (id: string, persist = false) => {
+    const kv = new MemoryKVService();
     if (persist) {
-        kv.persist( join(ConfigService.__rootDir,`data/kv-${id}.json`) );
+        const file = join(ConfigService.getRootDir(), `data/kv-${id}.json`);
+        kv.persist(file);
     }
-    kv.set('kv-id', id)
+    kv.set('kv-id', id);
     return kv;
-}
+};

@@ -24,12 +24,13 @@ const levelTags = {
 }
 
 export default {
-    subscribe: ['app::log'],
-    handler: async function(input) {
+    subscribe: ['do-log'],
+    handler: async function(input, {logger}) {
+        logger.debug(`do-log event handler called`)
         const {level, time, msg, meta} = input;
         const tag = levelTags[level.toLowerCase()] || '[LOG]';
         rl.write(
-            `${tag} [${new Date(time).toLocaleString()} - ${msg} ${meta ? JSON.stringify(meta) : ''}\n`
+            `${tag} [${new Date(time).toLocaleString()}] - ${msg} ${meta ? JSON.stringify(meta) : ''}\n`
         )
     }
 };
