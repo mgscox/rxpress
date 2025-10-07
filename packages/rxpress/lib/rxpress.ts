@@ -17,6 +17,9 @@ export namespace rxpress {
     var kv: KVBase;
     var config: RxpressConfig;
     export function init(param: {config: RxpressConfig, logger: Logger, kv: KVBase}) {
+        if (config.processHandlers) {
+            addProcessHandlers();
+        }
         config = param.config;
         logger = param.logger;
         kv = param.kv;
@@ -127,11 +130,25 @@ export namespace rxpress {
         return server;
     }
     export function stop(): Promise<void> {
+        EventService.emit({topic: 'SYS::SHUTDOWN', data: {}});
         EventService.close();
         RouteService.close();
         CronService.close();
         return new Promise(resolve => {
             server.close(() => resolve());
         })
+    }
+    function addProcessHandlers() {
+        process.on('SIGTERM', async () => {
+            await stop();
+        });
+        process.on('uncaughtException', async (reason) => {
+            EventService.emit({topic: 'SYS:::UNCAUGHT_EXCEPTION', data: {reason}});
+            await stop();
+        });
+        process.on('unhandledRejection', async (reason) => {
+            EventService.emit({topic: 'SYS:::UNCAUGHT_EXCEPTION', data: {reason}});
+            await stop();
+        });
     }
 }
