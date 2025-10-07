@@ -1,18 +1,10 @@
 import chalk from 'chalk';
 import { createInterface } from 'node:readline';
+import { EventConfig } from 'rxpress';
 
 const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
-    error: process.stdout,
-    tabSize: 4,
-    prompt: '',
-    removeHistoryDuplicates: true,
-    historySize: 10,
-    terminal: true,
-    escapeCodeTimeout: 10,
-    tabCompletion: true,
-    history: [],
 });
 
 const levelTags = {
@@ -27,10 +19,11 @@ export default {
     subscribe: ['do-log'],
     handler: async function(input, {logger}) {
         logger.debug(`do-log event handler called`)
-        const {level, time, msg, meta} = input;
-        const tag = levelTags[level.toLowerCase()] || '[LOG]';
+        const {level, time, msg, meta} = input as Record<string, any>;
+        const levelKey = level.toLowerCase() as keyof typeof levelTags;
+        const tag = levelTags[levelKey] || '[LOG]';
         rl.write(
             `${tag} [${new Date(time).toLocaleString()}] - ${msg} ${meta ? JSON.stringify(meta) : ''}\n`
         )
     }
-};
+} as EventConfig;

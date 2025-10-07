@@ -14,7 +14,7 @@ Example adapters live under [`src/helpers/`](./src/helpers). Import them into yo
 
 ```ts
 import { rxpress } from 'rxpress';
-import type { RPCConfig } from 'rxpress/types';
+import type { RPCConfig } from 'rxpress';
 
 import { createSimpleLogger } from './src/helpers/simple-logger.service.js';
 import { createMemoryKv } from './src/helpers/memory-kv.service.js';

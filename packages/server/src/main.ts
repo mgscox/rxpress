@@ -86,7 +86,7 @@ async function main() {
   });
 
   rxpress.addEvents(inlineEvents);
-  await rxpress.load({ eventDir: join(__dirname, '..', 'src', 'events') });
+  await rxpress.load({ eventDir: join(__dirname, 'events') });
   rxpress.addHandlers(routes);
 
   const { server, port: boundPort } = await rxpress.start({ port });
