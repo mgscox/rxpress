@@ -2,6 +2,7 @@ const tsParser = require('@typescript-eslint/parser');
 const tsPlugin = require('@typescript-eslint/eslint-plugin');
 const importPlugin = require('eslint-plugin-import');
 const unusedImports = require('eslint-plugin-unused-imports');
+const stylistic = require('@stylistic/eslint-plugin');
 const js = require('@eslint/js');
 const globals = require('globals');
 
@@ -24,6 +25,7 @@ module.exports = [
       '@typescript-eslint': tsPlugin,
       import: importPlugin,
       'unused-imports': unusedImports,
+      '@stylistic': stylistic,
     },
     rules: {
       'no-unused-vars': 'off',
@@ -33,6 +35,21 @@ module.exports = [
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@stylistic/brace-style': ['error', 'stroustrup', { allowSingleLine: true }],
+      '@stylistic/indent': ['error', 2],
+      '@stylistic/padding-line-between-statements': [
+        'error',
+        {
+          blankLine: 'always',
+          prev: 'block-like',
+          next: '*',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'block-like',
+        },
       ],
     },
   },
