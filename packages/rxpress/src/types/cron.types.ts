@@ -5,7 +5,7 @@ import { Logger } from './logger.types.js';
 export type CronHandler = (now: number, ctx: { logger: Logger; kv: KVBase; emit: Emit }) => void;
 
 export type CronConfig = {
-    cronTime: string;
-    timeZone?: string;
-    handler: CronHandler;
+  cronTime: string;
+  timeZone?: string;
+  handler: CronHandler;
 };

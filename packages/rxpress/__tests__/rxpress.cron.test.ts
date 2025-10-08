@@ -12,9 +12,9 @@ const logger: Logger = {
   debug: () => undefined,
   warn: () => undefined,
   log: () => undefined,
-  addListener: function (callback: LogLogger): void {
+  addListener: function (_callback: LogLogger): void {
     throw new Error('Function not implemented.');
-  }
+  },
 };
 
 const kvStore = new Map<string, unknown>();
@@ -53,7 +53,7 @@ const result = await (async () => {
   });
 
   const cronConfig: CronConfig = {
-    cronTime: "*/1 * * * * *",
+    cronTime: '*/1 * * * * *',
     handler: (_now, { emit, kv: contextKv }) => {
       contextKv.set('cron-fired', true);
       emit({ topic: 'cron::fired', data: 'tick' });
@@ -61,13 +61,15 @@ const result = await (async () => {
   };
   rxpress.addCrons(cronConfig);
 
-  const { server } = await rxpress.start({ port: 0 });
+  const { server: _server } = await rxpress.start({ port: 0 });
+
   try {
     await cronHandled;
     await delay(50); // give cron handler time to settle
     assert.equal(kv.get('cron-fired'), true);
     assert.deepEqual(triggered, ['tick']);
-  } finally {
+  } 
+  finally {
     await rxpress.stop();
     await delay(10);
   }

@@ -11,16 +11,16 @@ const routes: RPCConfig[] = [
     path: '/api/v1/example',
     middleware: [],
     emits: ['do-log', 'another-emit'],
-    strict: false,                              // strict is false - response will be sent to client even if responseSchema fails checks
+    strict: false, // strict is false - response will be sent to client even if responseSchema fails checks
     responseSchema: {
-      200: z.object({ response: z.string() }),  // this does NOT match return object in Handler function ('response' vs 'result') - will cause a warning
+      200: z.object({ response: z.string() }), // this does NOT match return object in Handler function ('response' vs 'result') - will cause a warning
     },
     handler: async (req: Request, { emit, logger }) => {
       const payload = {
         level: 'info',
         time: Date.now(),
         msg: `Payload for a "do-log" event emitted from HTTP handler`,
-        meta: { 
+        meta: {
           method: req.method,
           path: req.path,
         },
@@ -30,7 +30,7 @@ const routes: RPCConfig[] = [
 
       //HTTP 200 status, with JSON payload (as this is a 'api' hanlder)
       const hanlderResult = { status: 200, body: { result: 'Hello World!' } };
-      emit({topic: 'another-emit', data: hanlderResult})
+      emit({ topic: 'another-emit', data: hanlderResult });
       return hanlderResult;
     },
   },
@@ -45,7 +45,7 @@ const routes: RPCConfig[] = [
         level: 'info',
         time: Date.now(),
         msg: `Payload for a "do-log" event emitted from HTTP handler`,
-        meta: { 
+        meta: {
           method: req.method,
           path: req.path,
         },
@@ -55,7 +55,7 @@ const routes: RPCConfig[] = [
 
       //HTTP 200 status, with HTML payload (as this is a 'api' hanlder)
       const hanlderResult = { status: 200, body: '<h1>Hello World!</h1>' };
-      emit({topic: 'another-emit', data: hanlderResult})
+      emit({ topic: 'another-emit', data: hanlderResult });
       return hanlderResult;
     },
   },
@@ -64,7 +64,7 @@ const routes: RPCConfig[] = [
 const inlineEvents: EventConfig[] = [
   {
     subscribe: ['another-emit'],
-    handler: async (input, {logger}) => {
+    handler: async (input, { logger }) => {
       const payload = input as { status: string; body: Record<string, unknown> };
       logger.info(`Inline configured event triggered`, payload);
     },

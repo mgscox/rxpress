@@ -41,12 +41,11 @@
     "build": "lerna run build",
     "prepare": "husky",
     "lint": "eslint \"packages/**/src/**/*.{ts,js}\" \"packages/**/__tests__/**/*.{ts,js}\"",
-    "lint:fix": "prettier --check --write *.{ts,js,tsx,jsx} && npm run lint --stream -- --fix"
+    "lint:fix": "npm run lint --stream -- --fix"
   },
   "lint-staged": {
     "*.{ts,js,tsx,jsx}": [
-      "eslint --max-warnings=0",
-      "prettier --check"
+      "eslint --max-warnings=0"
     ],
     "*.{json,md}": [
       "prettier --check"

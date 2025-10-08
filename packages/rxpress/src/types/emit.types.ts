@@ -1,1 +1,1 @@
-export type Emit = (param: {topic: string, data?: unknown}) => void;
+export type Emit = (param: { topic: string; data?: unknown }) => void;

@@ -11,9 +11,9 @@ const logger: Logger = {
   debug: () => undefined,
   warn: () => undefined,
   log: () => undefined,
-  addListener: function (callback: LogLogger): void {
+  addListener: function (_callback: LogLogger): void {
     throw new Error('Function not implemented.');
-  }
+  },
 };
 
 const store = new Map<string, unknown>();
@@ -34,9 +34,11 @@ const isPermissionError = (error: unknown) => {
   if (typeof error === 'string') {
     return error.includes('EPERM') || error.includes('EACCES');
   }
+
   if (error instanceof Error) {
     return /EPERM|EACCES/.test(error.message);
   }
+
   return false;
 };
 
@@ -70,17 +72,21 @@ await (async () => {
   rxpress.addHandlers(route);
 
   let startResult: Awaited<ReturnType<typeof rxpress.start>> | null = null;
+
   try {
     startResult = await rxpress.start({ port: 0 });
-  } catch (error) {
+  } 
+  catch (error) {
     if (isPermissionError(error)) {
       console.warn('[rxpress] integration test skipped due to listen permissions');
       return;
     }
+
     throw error;
   }
 
   const { server } = startResult;
+
   try {
     const address = server.address();
     assert.ok(address && typeof address === 'object', 'server did not bind to an address');
@@ -89,16 +95,19 @@ await (async () => {
     await delay(30);
 
     const response = await fetch(`http://127.0.0.1:${port}/ping`);
+
     if (response.status !== 200) {
       const body = await response.text();
       console.error(`[integration] unexpected status ${response.status}: ${body}`);
     }
+
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.deepEqual(payload, { ok: true });
 
     assert.deepEqual(events, ['pong']);
-  } finally {
+  } 
+  finally {
     await rxpress.stop();
   }
 })();
