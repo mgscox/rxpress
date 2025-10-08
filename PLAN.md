@@ -52,10 +52,11 @@
 
 - [x] Added cron integration smoke test covering scheduler + event pipeline.
 - [x] Automated semantic-release workflow with changelog, npm publish, and git tagging.
+- [x] README helper example covered by automated integration test.
 
 ### Phase 3 – Upcoming Focus
-- [ ] Add automated test that compiles the README helper example to guard against regressions.
-- [ ] Document how to run the `npm run release` workflow (semantic-release) in CONTRIBUTING/README.
+- [x] Add automated test that compiles the README helper example to guard against regressions.
+- [x] Document how to run the `npm run release` workflow (semantic-release) in CONTRIBUTING/README.
 
 ## Phase 4 – Consumer Migration
 12. [x] **Retire duplicated config service:** removed local ConfigService after exposing root resolution via library helpers.
