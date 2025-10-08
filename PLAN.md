@@ -36,36 +36,39 @@
 
 
 ## Phase 3 – Packaging & Verification
-7. [x] **Wire build tooling:** add `npm run build` to compile to `dist/`, update `package.json` (`main`, `exports`, `types`, clean description, semver). Include `files: ["dist"]` and remove TypeScript sources from publish payload.
+7. [x] **Wire build tooling:** add `npm run build` to compile to `dist`, update `package.json` (`main`, `exports`, `types`, clean description, semver). Include `files: ["dist"]` and remove TypeScript sources from publish payload.
 8. [x] **Add tests/examples:** port existing smoke tests, add integration tests that spin up express app via library; document fixtures under `__tests__`.
 9. [x] **Update docs:** author README usage guide and migration notes; ensure AGENTS.md references new workflow if needed.
+10. [x] **Refactor `packages/server`:** replace local service imports with `rxpress` exports; keep only project-specific routes/events/config.
+11. [x] **Provide wrapper bootstrap:** update server startup scripts to call `rxpress.init()`/`start()` instead of bespoke logic; confirm environment loading still works via new API.
 
 ### Phase 3 Progress
 - [x] Cleaned `package.json` metadata, set version 0.1.0, and limited publish artifacts to `dist` + README.
 - [x] Added README quick start documenting adapter expectations.
+- [x] Documented helper adapters under `src/helpers` and wired README examples to real implementations.
 - [x] Added ts-node driven integration test with stub adapters; skips gracefully when sandbox blocks listening sockets.
 
 - [x] Added CHANGELOG and publishing checklist to document release flow.
 
 - [x] Added cron integration smoke test covering scheduler + event pipeline.
+- [x] Automated semantic-release workflow with changelog, npm publish, and git tagging.
 
 ### Phase 3 – Upcoming Focus
-- [ ] Begin refactor of `packages/server` to consume the new library API while keeping example routes/events intact.
-- [ ] Automate changelog generation / semantic release flow.
+- [ ] Add automated test that compiles the README helper example to guard against regressions.
+- [ ] Document how to run the `npm run release` workflow (semantic-release) in CONTRIBUTING/README.
 
 ## Phase 4 – Consumer Migration
-10. [x] **Refactor `packages/server`:** replace local service imports with `rxpress` exports; keep only project-specific routes/events/config.
-11. [x] **Provide wrapper bootstrap:** update server startup scripts to call `rxpress.init()`/`start()` instead of bespoke logic; confirm environment loading still works via new API.
-12. [ ] **Retire duplicated config service:** remove the local `ConfigService` only if the example server can resolve its root directory through the library API (or an override hook); otherwise document the gap and revisit.
+12. [x] **Retire duplicated config service:** removed local ConfigService after exposing root resolution via library helpers.
 
 ### Phase 4 Progress
 - [x] Server example now calls `rxpress.init/start`, registers routes/events through the library, and relies on shared logger/KV adapters.
-- [ ] Local `ConfigService` persists to support server-specific helpers; evaluate replacing with library helper or exposing adapter package.
+- [x] Local ConfigService removed; server uses shared helper configuration.
 
 ## Phase 5 – Publish Readiness
 13. [ ] **End-to-end validation:** run `npm run build --workspace rxpress`, `npm pack` to inspect tarball, and test consuming it from a sample app (`npm init -y && npm install ../rxpress-*.tgz`).
-14. [ ] **Version & release:** establish release checklist, bump `version`, add CHANGELOG entry, and prepare `npm publish` workflow.
-15. [ ] **Post-publish integration:** update server workspace to depend on published semver (instead of relative path) and verify `npm install rxpress` works in a clean environment.
+14. [ ] **Lint & format automation:** wire ESLint + Prettier into CI and add Husky pre-commit hooks to enforce staged checks.
+15. [ ] **Version & release:** establish release checklist, bump `version`, add CHANGELOG entry, and prepare `npm publish` workflow.
+16. [ ] **Post-publish integration:** update server workspace to depend on published semver (instead of relative path) and verify `npm install rxpress` works in a clean environment.
 
 ## Considerations & Risks
 - Keep logger/KV integration fully adapter-based; document required interface signatures so teams can slot in console, pino, Redis, memory, or other tooling without coupling.

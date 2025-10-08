@@ -1,0 +1,22 @@
+{
+  "branches": ["main"],
+  "tagFormat": "rxpress-v${version}",
+  "plugins": [
+    ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
+    ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
+    ["@semantic-release/changelog", { "changelogFile": "packages/rxpress/CHANGELOG.md" }],
+    ["@semantic-release/exec", { "prepareCmd": "npm run build --workspace rxpress" }],
+    ["@semantic-release/npm", { "pkgRoot": "packages/rxpress", "tarballDir": "packages/rxpress/dist" }],
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "packages/rxpress/package.json",
+          "packages/rxpress/CHANGELOG.md",
+          "package-lock.json"
+        ],
+        "message": "chore(release): rxpress ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ]
+  ]
+}
