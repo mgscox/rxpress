@@ -1,9 +1,8 @@
 import { join } from 'node:path';
-
+import { AddressInfo } from 'node:net';
 import * as z from 'zod';
 import { rxpress, ConfigService, helpers } from 'rxpress';
 import type { RPCConfig, EventConfig, Request } from 'rxpress';
-import { AddressInfo } from 'node:net';
 
 const routes: RPCConfig[] = [
   {

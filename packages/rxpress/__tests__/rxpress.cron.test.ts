@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { rxpress } from '../src/rxpress.js';
-import type { Logger, KVBase, CronConfig, EventConfig } from '../src/types/index.js';
+import type { Logger, KVBase, CronConfig, EventConfig, LogLogger } from '../src/types/index.js';
 
 const logger: Logger = {
   child: () => logger,
@@ -12,6 +12,9 @@ const logger: Logger = {
   debug: () => undefined,
   warn: () => undefined,
   log: () => undefined,
+  addListener: function (callback: LogLogger): void {
+    throw new Error('Function not implemented.');
+  }
 };
 
 const kvStore = new Map<string, unknown>();
