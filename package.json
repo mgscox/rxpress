@@ -23,6 +23,8 @@
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/npm": "^12.0.2",
     "@semantic-release/release-notes-generator": "^14.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
@@ -35,6 +37,18 @@
   },
   "scripts": {
     "release": "semantic-release",
-    "build": "lerna run build"
+    "build": "lerna run build",
+    "prepare": "husky",
+    "lint": "eslint \"packages/**/src/**/*.{ts,js}\" \"packages/**/__tests__/**/*.{ts,js}\"",
+    "lint:fix": "prettier --check --write && npm run lint --stream -- --fix"
+  },
+  "lint-staged": {
+    "*.{ts,js,tsx,jsx}": [
+      "eslint --max-warnings=0",
+      "prettier --check"
+    ],
+    "*.{json,md}": [
+      "prettier --check"
+    ]
   }
 }

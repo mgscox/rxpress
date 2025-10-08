@@ -2,3 +2,5 @@ node_modules/
 dist/
 logs/
 .nx/
+lerna-debug.log
+.eslintcahce
