@@ -1,10 +1,10 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { Subject } from 'rxjs';
 import * as z from 'zod';
 import { performance } from 'node:perf_hooks';
 import { Counter, Histogram, SpanStatusCode } from '@opentelemetry/api';
 
-import { RPCConfig, RPCContext, RPCHttpResult, RPCResult, rxRequest } from '../types/rpc.types.js';
+import { RequestHandlerMiddleware, RequestMiddleware, RPCConfig, RPCContext, RPCHttpResult, RPCResult, rxRequest } from '../types/rpc.types.js';
 import { EventService } from './event.service.js';
 import { Logger } from '../types/logger.types.js';
 import { KVBase } from '../types/kv.types.js';
@@ -238,6 +238,24 @@ export namespace RouteService {
   }
 
   export function addHandler(route: RPCConfig, logger: Logger, kv: KVBase): express.Router {
+    const now = performance.now();
+
+    const middlewareWrapper = (middleware: RequestHandlerMiddleware) => {
+      return (req: Request, res: Response, next: NextFunction) => {
+        const middleReq = {
+          ...req,
+          logger,
+          kv,
+          emit: EventService.emit,
+        } as RequestMiddleware;
+        Promise
+          .resolve(middleware(middleReq, res, next))
+          .catch(
+            (err) => next(err)
+          );
+      }
+    }
+
     const router = express.Router();
     const signature =
       `${route.flow ? `${route.flow}_` : ""}${route.method}::${route.path}`.toLowerCase();
@@ -246,14 +264,14 @@ export namespace RouteService {
 
     pubs$[signature] = pub$;
 
-    router[method](route.path, ...route.middleware || [], (req, res) => {
+    router[method](route.path, ...(route.middleware?.map(m => middlewareWrapper(m)) || []), (req, res) => {
       // capture the active ctx at the moment the request hits Express
       const activeCtx = MetricService.getContext().active();
       const rxReq = (req as rxRequest);
       rxReq._rxpress = {
         trace: {
-          initiated: performance.now(),
-          start: 0,
+          initiated: now,
+          start: now,     // will be overwritten when handler runs
         } 
       }
       pub$.next({ req: rxReq, res, ctx: activeCtx });

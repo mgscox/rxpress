@@ -1,6 +1,6 @@
 import * as z from 'zod';
 import { ZodSchema } from 'zod';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 import { KVBase } from './kv.types.js';
 import { Logger } from './logger.types.js';
@@ -23,6 +23,12 @@ export type RPCFunction = (
     logger: Logger;
   },
 ) => MaybePromise<RPCResult>;
+export type RequestMiddleware = Request & {
+  logger: Logger,
+  kv: KVBase,
+  emit: Emit,
+}
+export type RequestHandlerMiddleware = (req: RequestMiddleware, res: Response, next: NextFunction) => void | Promise<void>
 export type RPCConfigBase = {
   type: RPCTypes;
   name?: string;
@@ -30,7 +36,7 @@ export type RPCConfigBase = {
   description?: string;
   method: RPCMethod;
   path: string;
-  middleware?: any[];
+  middleware?: RequestHandlerMiddleware[];
   emits?: string[];
   queryParams?: z.ZodArray<z.ZodString>;
   bodySchema?: ZodSchema;
