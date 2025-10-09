@@ -10,6 +10,7 @@ import {
   RxpressConfig,
   Logger,
   KVBase,
+  BufferLike,
 } from './types/index.js';
 
 import { EventService } from './services/event.service.js';
@@ -17,6 +18,7 @@ import { RouteService } from './services/route.service.js';
 import { CronService } from './services/cron.service.js';
 import { MetricService } from './services/metrics.service.js';
 import { ConfigService } from './services/config.service.js';
+import { WSSService } from './services/wss.service.js';
 
 export namespace rxpress {
   let app: express.Express | null = null;
@@ -73,7 +75,21 @@ export namespace rxpress {
       server.on('listening', () => {
         resolve({ server: server!, port: listenPort });
       });
+      WSSService.createWs(server, activeConfig?.wsPath);
       server.listen(listenPort, hostname);
+      EventService.add({
+        subscribe: ['wss.broadcast'],
+        handler: async (input: unknown) => {
+          const payload = (input === typeof 'BufferLike')
+            ? <BufferLike>input
+            : JSON.stringify(input);
+          WSSService.broadcast(payload);
+        },
+      }, {
+        logger: activeLogger!,
+        kv: activeKv!,
+        emit: EventService.emit,
+      })
     });
   }
 
@@ -83,7 +99,7 @@ export namespace rxpress {
     const config = module.config || module.default;
 
     if (config) {
-      EventService.add(config, { logger: activeLogger!, kv: activeKv! });
+      EventService.add(config, { logger: activeLogger!, kv: activeKv!, emit: EventService.emit });
     } 
     else {
       throw new Error(`(EVENT) Missing configuration export: ${file}`);
@@ -127,7 +143,7 @@ export namespace rxpress {
     const entries = Array.isArray(events) ? events : [events];
 
     for (const event of entries) {
-      EventService.add(event, { logger: activeLogger!, kv: activeKv! });
+      EventService.add(event, { logger: activeLogger!, kv: activeKv!, emit: EventService.emit });
     }
   }
 
@@ -197,11 +213,9 @@ export namespace rxpress {
       console.warn(`Error during shutdown`, e);
     });
 
-    if (server) {
-      server.close();
-      server = null;
-    }
-
+    WSSService.close();
+    server?.close();
+    server = null;
   }
 
   function addProcessHandlers() {

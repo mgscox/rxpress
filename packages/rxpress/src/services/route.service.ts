@@ -336,7 +336,6 @@ export namespace RouteService {
     const method = route.method.toLowerCase() as keyof typeof router & ("get" | "post" | "put" | "delete");
 
     pubs$[signature] = pub$;
-
     router[method](route.path, ...(route.middleware?.map(m => middlewareWrapper(m)) || []), (req, res) => {
       // capture the active ctx at the moment the request hits Express
       const activeCtx = MetricService.getContext().active();
@@ -349,7 +348,6 @@ export namespace RouteService {
       }
       pub$.next({ req: rxReq, res, ctx: activeCtx });
     });
-
     pub$.subscribe({
       next: ({ req, res, ctx }) => {
         req._rxpress.trace.start = performance.now();

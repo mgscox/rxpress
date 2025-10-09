@@ -14,7 +14,7 @@ export namespace EventService {
 
   export const add = (
     events: Events | EventConfig,
-    { logger, kv }: { logger: Logger; kv: KVBase },
+    { logger, kv, emit }: { logger: Logger; kv: KVBase, emit: Emit },
   ) => {
     const entries = Array.isArray(events) ? events : [events];
 
@@ -22,7 +22,7 @@ export namespace EventService {
       event.subscribe.forEach((topic: string) => {
         events$[topic] ?? (events$[topic] = new Subject());
         events$[topic].subscribe({
-          next: (input) => event.handler(input, { trigger: topic, logger, kv }),
+          next: (input) => event.handler(input, { trigger: topic, logger, kv, emit }),
         });
       });
     }

@@ -34,6 +34,7 @@
   },
   "homepage": "https://github.com/mgscox/newintel#readme",
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
@@ -56,13 +57,14 @@
     "@opentelemetry/instrumentation-express": "^0.55.0",
     "@opentelemetry/instrumentation-http": "^0.206.0",
     "@opentelemetry/instrumentation-runtime-node": "^0.20.0",
-    "@opentelemetry/semantic-conventions": "^1.37.0",
     "@opentelemetry/sdk-metrics": "^2.1.0",
     "@opentelemetry/sdk-node": "^0.206.0",
+    "@opentelemetry/semantic-conventions": "^1.37.0",
     "cron": "^4.3.3",
     "express": "^5.1.0",
     "glob": "^10.4.5",
     "rxjs": "^7.8.2",
+    "ws": "^8.17.1",
     "zod": "^4.1.11"
   },
   "engines": {

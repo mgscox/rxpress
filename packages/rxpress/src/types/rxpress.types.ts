@@ -13,4 +13,5 @@ export type RxpressConfig = {
   metrics?: MetricsConfig;
   processHandlers?: boolean;
   json?: JsonOptions;
+  wsPath?: string;
 };

@@ -57,7 +57,7 @@ export type RPCConfigBase = {
 };
 export type RPCConfig = RPCConfigBase;
 export type RPCRoutes = RPCConfig[];
-export type EventContext = { trigger: string; logger: Logger; kv: KVBase };
+export type EventContext = { trigger: string; logger: Logger; kv: KVBase, emit: Emit };
 export type EventFunction = <T>(input: T, ctx: EventContext) => MaybePromise<void>;
 export type EventConfig = {
   subscribe: string[];
@@ -65,3 +65,21 @@ export type EventConfig = {
   handler: EventFunction;
 };
 export type Events = EventConfig[];
+export type BufferLike =
+    | string
+    | Buffer
+    | DataView
+    | number
+    | ArrayBufferView
+    | Uint8Array
+    | ArrayBuffer
+    | SharedArrayBuffer
+    | Blob
+    | readonly any[]
+    | readonly number[]
+    | { valueOf(): ArrayBuffer }
+    | { valueOf(): SharedArrayBuffer }
+    | { valueOf(): Uint8Array }
+    | { valueOf(): readonly number[] }
+    | { valueOf(): string }
+    | { [Symbol.toPrimitive](hint: string): string };
