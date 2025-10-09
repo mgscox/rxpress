@@ -1,6 +1,7 @@
 const tests = [
   './rxpress.test.ts',
   './rxpress.integration.test.ts',
+  './rxpress.wss.test.ts',
   './rxpress.sse.test.ts',
   './rxpress.cron.test.ts',
   './readme-example.test.ts',

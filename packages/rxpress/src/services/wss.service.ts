@@ -9,14 +9,22 @@ export namespace WSSService {
   export function createWs(server: http.Server, path = '/') {
     wss = new WebSocketServer({ server, path }); 
     wss.on('listening', () => {
-      console.log(`wss is listening`, path)
+      EventService.emit({topic: 'wss.start', data: {}});
     })
     wss.on('connection', (ws, req) => {
       EventService.emit({topic: 'wss.connection', data: { ws, req }});
+      const pingInterval = setInterval(
+        () => ws.ping(), 
+        30_000
+      );
       ws.on('message', (data) => {
-        EventService.emit({topic: 'wss.message', data: {ws, data, req}});
-
+        if (`${data}` === 'ping') {
+          ws.pong();
+          return;
+        }
+        
         try {
+          EventService.emit({topic: 'wss.message', data: {ws, data, req}});
           const json = JSON.parse(Buffer.from(`${data}`).toString());
 
           if (json.path) {
@@ -26,6 +34,7 @@ export namespace WSSService {
         catch { /* Payload was not JSON */ }
       })
       ws.on('close', () => {
+        clearInterval(pingInterval);
         EventService.emit({topic: 'wss.close', data: {}});
       })
     });        
