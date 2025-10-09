@@ -5,10 +5,12 @@ import { Request, Response } from 'express';
 import { KVBase } from './kv.types.js';
 import { Logger } from './logger.types.js';
 import { Emit } from './emit.types.js';
+import { Context } from './metrics.types.js';
 
+export type rxRequest = Request & {_rxpress: {trace: {initiated: number, start: number}}, user?: {id?: string}}
 export type RPCTypes = 'http' | 'api' | 'cron';
 export type RPCMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
-export type RPCContext = { req: Request; res: Response };
+export type RPCContext = { req: rxRequest; res: Response, ctx: Context };
 export type RPCHttpResult = { status?: number; body: string; mime?: string };
 export type RPCApiResult = { status?: number; body: object };
 export type RPCResult = RPCHttpResult | RPCApiResult;
@@ -28,7 +30,7 @@ export type RPCConfigBase = {
   description?: string;
   method: RPCMethod;
   path: string;
-  middleware: any[];
+  middleware?: any[];
   emits?: string[];
   queryParams?: z.ZodArray<z.ZodString>;
   bodySchema?: ZodSchema;
@@ -39,7 +41,7 @@ export type RPCConfigBase = {
 export type RPCConfig = RPCConfigBase;
 export type RPCRoutes = RPCConfig[];
 export type EventContext = { trigger: string; logger: Logger; kv: KVBase };
-export type EventFunction = (input: unknown, ctx: EventContext) => MaybePromise<void>;
+export type EventFunction = <T>(input: T, ctx: EventContext) => MaybePromise<void>;
 export type EventConfig = {
   subscribe: string[];
   emits?: string[];

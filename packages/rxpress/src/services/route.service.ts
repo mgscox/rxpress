@@ -1,11 +1,14 @@
 import express, { Request, Response } from 'express';
 import { Subject } from 'rxjs';
 import * as z from 'zod';
+import { performance } from 'node:perf_hooks';
+import { Counter, Histogram, SpanStatusCode } from '@opentelemetry/api';
 
-import { RPCConfig, RPCContext, RPCHttpResult, RPCResult } from '../types/rpc.types.js';
+import { RPCConfig, RPCContext, RPCHttpResult, RPCResult, rxRequest } from '../types/rpc.types.js';
 import { EventService } from './event.service.js';
 import { Logger } from '../types/logger.types.js';
 import { KVBase } from '../types/kv.types.js';
+import { MetricService } from './metrics.service.js';
 
 export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
@@ -23,28 +26,33 @@ export namespace RouteService {
         reason.message = JSON.parse(reason.message);
       }
       catch {
-        /* ignore non-JSON error payloads */
+        /* ignore errors from non-JSON payloads */
       }
     }
 
     return {
       error,
       reason,
+      path: req.path,
+      method: req.method,
       route: {
         ...route,
-        bodySchema: route.bodySchema ? z.toJSONSchema(route.bodySchema as any) : undefined,
-        queryParams: route.queryParams ? z.toJSONSchema(route.queryParams as any) : undefined,
+        bodySchema: route.bodySchema 
+          ? z.toJSONSchema(route.bodySchema as any) 
+          : undefined,
+        queryParams: route.queryParams 
+          ? z.toJSONSchema(route.queryParams as any) 
+          : undefined,
         responseSchema: route.responseSchema
           ? route.responseSchema instanceof z.ZodObject
             ? z.toJSONSchema(route.responseSchema)
-            : Object.entries(route.responseSchema as Record<number, z.ZodObject<any>>).map(
-              ([code, schema]) => ({ statusCode: code, schema: z.toJSONSchema(schema) }),
-            )
+            : Object
+              .entries(route.responseSchema as Record<number, z.ZodObject<any>>)
+              .map(
+                ([code, schema]) => ({ statusCode: code, schema: z.toJSONSchema(schema) }
+                ),
+              )
           : undefined,
-      },
-      req: {
-        headers: req.headers,
-        body: req.body,
       },
     };
   };
@@ -74,80 +82,59 @@ export namespace RouteService {
     return false;
   };
 
-  async function runHandler(param: {
-    req: Request;
-    res: Response;
-    route: RPCConfig;
-    logger: Logger;
-    kv: KVBase;
-  }) {
+  let requestCounter: Counter;
+  let requestDuration: Histogram;
+  let requestLatency: Histogram;
+
+  function updateHttpMetrics(statusCode: number, initiatedTime: number, startTime: number, attributes: Record<string, string | number>) {
+    const now = performance.now();
+    attributes.status = String(statusCode);
+    requestCounter?.add(1, attributes);
+    requestLatency?.record(startTime - initiatedTime, attributes);
+    requestDuration?.record(now - startTime, attributes);
+  }
+
+  export function start() {
+    //ready$ will never fire unless metrics are initialised
+    MetricService.ready$.then(() => {
+      requestCounter = MetricService.addMetrics<Counter>({
+        type: 'counter',
+        name: 'rxpress_server_requests_total', 
+        description: 'Total HTTP requests handled by rxpress routes', 
+        unit: '1' 
+      });
+      requestDuration = MetricService.addMetrics<Histogram>({
+        type: 'histogram',
+        name: 'rxpress_server_request_duration_ms', 
+        description: 'Processing time for rxpress handlers', 
+        unit: 'ms' 
+      });
+      requestLatency = MetricService.addMetrics<Histogram>({
+        type: 'histogram',
+        name: 'rxpress_server_request_latency_ms', 
+        description: 'Latency to start processing rxpress handlers', 
+        unit: 'ms' 
+      })
+    })
+  }
+
+  async function runHandler(param: { req: rxRequest; res: Response; route: RPCConfig; logger: Logger; kv: KVBase }) {
     const { req, res, route, logger, kv } = param;
     let result!: RPCResult;
-
-    if (route.bodySchema) {
-      try {
-        route.bodySchema.parse(req.body);
-      }
-      catch (reason) {
-        const payload = getPayload({
-          error: 'Invalid request body payload',
-          reason: `${reason}`,
-          route,
-          req,
-        });
-
-        if (handleError({ payload, route, res })) {
-          return;
-        }
-      }
-    }
-
-    if (route.queryParams) {
-      try {
-        route.queryParams.parse(req.params);
-      }
-      catch (reason) {
-        const payload = getPayload({
-          error: 'Invalid request parameters',
-          reason: `${reason}`,
-          route,
-          req,
-        });
-
-        if (handleError({ payload, route, res })) {
-          return;
-        }
-      }
-    }
+    const attributes: Record<string, string | number> = {
+      method: route.method,
+      type: route.type,
+      path: route.path.toLowerCase(),
+    };
 
     try {
-      result = await route.handler(req, {
-        emit: EventService.emit,
-        kv,
-        logger,
-      });
-    }
-    catch (reason) {
-      result = {
-        status: 500,
-        body: {
-          error: `${reason}`,
-        },
-      };
-    }
-    finally {
-      if (route.responseSchema) {
-        const toParse =
-          route.responseSchema instanceof z.ZodObject
-            ? route.responseSchema
-            : route.responseSchema[result.status || 200] || z.object({ error: z.string() });
-
+      if (route.bodySchema) {
         try {
-          toParse.parse(result.body);
+          route.bodySchema.parse(req.body);
         }
         catch (reason) {
           const payload = getPayload({
-            error: 'Invalid API Response',
+            error: 'Invalid request body payload',
             reason: `${reason}`,
             route,
             req,
@@ -158,50 +145,204 @@ export namespace RouteService {
           }
         }
       }
-    }
 
-    try {
-      switch (route.type) {
-        case 'http': {
-          const httpResult = result as RPCHttpResult;
-          res.contentType(httpResult.mime || 'text/html');
-          res.status(result.status || 200).send(`${result.body}`);
-          break;
+      if (route.queryParams) {
+        try {
+          route.queryParams.parse(req.params);
         }
+        catch (reason) {
+          const payload = getPayload({
+            error: 'Invalid request parameters',
+            reason: `${reason}`,
+            route,
+            req,
+          });
 
-        case 'api': {
-          res.contentType('application/json');
-          res.status(result.status || 200).json(result.body);
-          break;
+          if (handleError({ payload, route, res })) {
+            return;
+          }
         }
       }
+
+      try {
+        result = await route.handler(req, {
+          emit: EventService.emit,
+          kv,
+          logger,
+        });
+        res.statusCode = result.status ?? 200;
+      }
+      catch (reason) {
+        res.statusCode = 500;
+        result = {
+          status: 500,
+          body: {
+            error: `${reason}`,
+          },
+        };
+      }
+      finally {
+        if (route.responseSchema) {
+          const toParse = route.responseSchema instanceof z.ZodObject
+            ? route.responseSchema
+            : route.responseSchema[result.status || 200] || z.object({ error: z.string() });
+
+          try {
+            toParse.parse(result.body);
+          }
+          catch (reason) {
+            const payload = getPayload({
+              error: 'Invalid API Response',
+              reason: `${reason}`,
+              route,
+              req,
+            });
+
+            if (handleError({ payload, route, res })) {
+              return;
+            }
+          }
+        }
+      }
+
+      try {
+        switch (route.type) {
+          case 'http': {
+            const httpResult = result as RPCHttpResult;
+            res.contentType(httpResult.mime || 'text/html');
+            res.status(result.status || 200).send(`${result.body}`);
+            break;
+          }
+
+          case 'api': {
+            res.contentType('application/json');
+            res.status(result.status || 200).json(result.body);
+            break;
+          }
+        }
+      }
+      catch (reason) {
+        console.error(reason);
+        const payload = getPayload({
+          error: 'Invalid API response',
+          reason: `${reason}`,
+          route,
+          req,
+        });
+        handleError({ payload, code: 500, route, res });
+      }
     }
-    catch (reason) {
-      console.error(reason);
-      const payload = getPayload({
-        error: 'Invalid API response',
-        reason: `${reason}`,
-        route,
-        req,
-      });
-      handleError({ payload, code: 500, route, res });
+    finally {
+      updateHttpMetrics(res.statusCode, req._rxpress.trace.initiated, req._rxpress.trace.start, attributes);
     }
   }
 
   export function addHandler(route: RPCConfig, logger: Logger, kv: KVBase): express.Router {
     const router = express.Router();
     const signature =
-      `${route.flow ? `${route.flow}_` : ''}${route.method}::${route.path}`.toLowerCase();
+      `${route.flow ? `${route.flow}_` : ""}${route.method}::${route.path}`.toLowerCase();
     const pub$ = new Subject<RPCContext>();
-    const method = route.method.toLowerCase() as keyof typeof router &
-      ('get' | 'post' | 'put' | 'delete');
+    const method = route.method.toLowerCase() as keyof typeof router & ("get" | "post" | "put" | "delete");
+
     pubs$[signature] = pub$;
-    router[method](route.path, ...route.middleware, (req: Request, res: Response) => {
-      pubs$[signature]?.next({ req, res });
+
+    router[method](route.path, ...route.middleware || [], (req, res) => {
+      // capture the active ctx at the moment the request hits Express
+      const activeCtx = MetricService.getContext().active();
+      const rxReq = (req as rxRequest);
+      rxReq._rxpress = {
+        trace: {
+          initiated: performance.now(),
+          start: 0,
+        } 
+      }
+      pub$.next({ req: rxReq, res, ctx: activeCtx });
     });
-    pubs$[signature].subscribe({
-      next: ({ req, res }) => runHandler({ req, res, route, logger, kv }),
+
+    pub$.subscribe({
+      next: ({ req, res, ctx }) => {
+        req._rxpress.trace.start = performance.now();
+        const tracer = MetricService.getTracer();
+
+        // Run inside the captured context so downstream work sees the same trace
+        MetricService.getContext().with(ctx, () => {
+          tracer.startActiveSpan(`${req.method} ${route.path}`, async (span) => {
+            // --- Recommended HTTP attributes (newer naming)
+            const ua = req.headers["user-agent"];
+            const hostHeader = req.headers.host ?? "";
+            const protocol = req.protocol; // "http" | "https"
+            const clientIp =
+              (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() 
+              || (req.socket?.remoteAddress ?? "");
+
+            span.setAttributes({
+              // Request
+              "http.request.method": req.method,
+              "url.scheme": protocol,
+              "server.address": req.hostname || hostHeader.split(":")[0],
+              "server.port": Number(req.socket?.localPort) || undefined,
+              "url.path": req.path,
+              "url.query": req.url.includes("?") ? req.url.split("?")[1] : undefined,
+              "http.route": route.path, // templated route
+              "user_agent.original": ua || undefined,
+              "client.address": clientIp || undefined,
+
+              // Helpful low-cardinality identifiers
+              "enduser.id": (req as rxRequest).user?.id ?? undefined,
+              "http.request_id": (req.headers["x-request-id"] as string) || undefined,
+
+              // Legacy compatibility
+              "http.method": req.method,
+              "http.target": req.originalUrl,
+              "http.user_agent": ua || undefined
+            });
+
+            // Attach response finalization logic once, so we can set status/body sizes.
+            const onFinish = () => {
+              res.removeListener("finish", onFinish);
+              res.removeListener("close", onFinish);
+
+              // Status / sizes
+              span.setAttributes({
+                "http.response.status_code": res.statusCode,
+                "http.response.body.size": Number(res.getHeader("content-length")) || undefined,
+              });
+
+              // Mark errors based on status code if upstream didn’t already set an error
+              if (res.statusCode >= 500) {
+                span.setStatus({ code: SpanStatusCode.ERROR, message: `HTTP ${res.statusCode}` });
+              } 
+              else {
+                span.setStatus({ code: SpanStatusCode.OK });
+              }
+
+              span.end();
+            };
+
+            res.once("finish", onFinish);
+            res.once("close", onFinish);
+
+            try {
+              await runHandler({ req, res, route, logger, kv });
+            } 
+            catch (error) {
+              // Record exception as an event and set status
+              span.recordException(error as Error);
+              span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+              throw error;
+            } 
+            finally {
+              // If handler ended the response synchronously without triggering finish/close, ensure the span isn’t left open.
+              if (res.writableEnded && (span as any)._ended !== true) {
+                // safety: end if finish/close didn’t fire for some reason
+                onFinish();
+              }
+            }
+          });
+        });
+      },
     });
+
     return router;
   }
 

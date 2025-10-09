@@ -29,3 +29,9 @@
 - Releases are automated with semantic-release. To cut a version manually, ensure `NPM_TOKEN` and `GITHUB_TOKEN` are set, then run `npm run release` from the repo root.
 - The workflow rebuilds `packages/rxpress`, updates `packages/rxpress/CHANGELOG.md`, bumps `package.json`, publishes to npm, and pushes the changelog + tag (`rxpress-vX.Y.Z`).
 - Avoid manually editing version fields—semantic-release derives the next version from Conventional Commit history.
+
+## Observability
+
+- `docker-compose up` launches the OpenTelemetry Collector (OTLP HTTP on 4318) and Grafana on 3000. Credentials and URLs can be overridden via `.env` (e.g., `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ROOT_URL`). Prometheus data source and the sample dashboard are auto-provisioned.
+- Import the sample Grafana dashboard from `grafana/dashboards/rxpress-otel.json` to visualize request rate and process metrics.
+- When the server runs with default config, metrics are exported to `http://localhost:4318/v1/metrics`; Prometheus (http://localhost:9090) scrapes the collector and powers the dashboard.

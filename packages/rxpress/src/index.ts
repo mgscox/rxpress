@@ -2,6 +2,7 @@ import type { Request as expressRequest } from 'express';
 import { createSimpleLogger, simplelLogger } from './helpers/simple-logger.service.js';
 import { createMemoryKv, MemoryKVService } from './helpers/memory-kv.service.js';
 import { Logger } from './types/index.js';
+import { MetricService } from './services/metrics.service.js';
 
 // Re-export to simplofy rxpress library usage
 export type Request = expressRequest;
@@ -22,3 +23,9 @@ export const helpers: {
   simplelLogger,
   createMemoryKv,
 };
+
+function bootstrap() {
+  MetricService.load();
+}
+
+bootstrap();

@@ -3,6 +3,7 @@ import { AddressInfo } from 'node:net';
 import * as z from 'zod';
 import { rxpress, ConfigService, helpers } from 'rxpress';
 import type { RPCConfig, EventConfig, Request } from 'rxpress';
+import { DiagLogLevel } from '@opentelemetry/api';
 
 const routes: RPCConfig[] = [
   {
@@ -58,7 +59,7 @@ const routes: RPCConfig[] = [
       emit({ topic: 'another-emit', data: hanlderResult });
       return hanlderResult;
     },
-  },
+  }
 ];
 
 const inlineEvents: EventConfig[] = [
@@ -74,14 +75,30 @@ const inlineEvents: EventConfig[] = [
 async function main() {
   const port = Number.parseInt(ConfigService.env('PORT', '3002'), 10);
   const __dirname = ConfigService.getDirname(import.meta.url);
+  const metricsEndpoint = ConfigService.env(
+    'OTEL_EXPORTER_OTLP_METRICS_ENDPOINT',
+    'http://localhost:4318/v1/metrics',
+  );
+  const tracesEndpoint = ConfigService.env(
+    'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT',
+    'http://localhost:4318/v1/traces',
+  );
+
   rxpress.init({
     config: {
       port,
       loadEnv: false,
       processHandlers: true,
+      metrics: {
+        OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: metricsEndpoint,
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: tracesEndpoint,
+        console_log: {
+          level: DiagLogLevel.ALL
+        }
+      },
     },
     logger: helpers.simplelLogger,
-    kv: helpers.createMemoryKv('server', false),
+    kv: helpers.createMemoryKv('example_server', false),
   });
 
   rxpress.addEvents(inlineEvents);
@@ -90,11 +107,13 @@ async function main() {
 
   const { server, port: boundPort } = await rxpress.start({ port });
   const host = server.address() as AddressInfo;
-  helpers.simplelLogger.info(`rxpress server is running http://${host.address}:${boundPort}`);
+  helpers.simplelLogger.info(`rxpress example server is running http://${host?.address || 'localhost'}:${boundPort}`);
 }
 
-main().catch(async (error) => {
-  console.error('Fatal error starting server:', error);
-  await rxpress.stop(true);
-  process.exit(1);
-});
+main()
+  .catch(async (error) => {
+    console.error('Fatal error starting server:', error);
+  })
+  .finally(async () => {
+    await rxpress.stop(true);
+  });

@@ -48,7 +48,7 @@ await rxpress.start({ port: 3000 });
 - Declarative RPC configuration with runtime validation using Zod.
 - Event bus built on RxJS for request side-effects and cross-cutting concerns.
 - Cron job registration with logging and KV context hooks.
-- Opt-in OpenTelemetry metrics pipeline.
+- Opt-in OpenTelemetry metrics pipeline and HTTP tracing.
 
 ## Adapters
 

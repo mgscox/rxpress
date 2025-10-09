@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { ConfigService } from 'rxpress';
+import { ConfigService, KVBase } from 'rxpress';
 
-export class MemoryKVService {
+export class MemoryKVService implements KVBase {
   private store: Record<string, unknown> = {};
   private storeFile: string | null = null;
 
@@ -36,6 +36,15 @@ export class MemoryKVService {
   del(key: string): void {
     delete this.store[key];
     this.save();
+  }
+
+  inc(key: string, value = 1): number {
+    this.set(key, (this.get<number>(key) || 0) + value);
+    return this.get<number>(key)!;
+  }
+
+  dec(key: string, value = 1): number {
+    return this.inc(key, value * -1);
   }
 
   private save(): void {

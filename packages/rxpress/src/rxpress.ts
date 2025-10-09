@@ -56,6 +56,7 @@ export namespace rxpress {
       addProcessHandlers();
     }
 
+    RouteService.start();
     app = express();
     app.use(express.json(config.json));
   }
@@ -186,28 +187,21 @@ export namespace rxpress {
   }
 
   export async function stop(critical = false): Promise<void> {
-    if (!server) {
-      return;
-    }
-
     EventService.emit({ topic: 'SYS::SHUTDOWN', data: { critical } });
     EventService.close();
     RouteService.close();
     CronService.close();
     await Promise.all([
       MetricService.stop(),
-      new Promise<void>((resolve, reject) => {
-        server!.close((error) => {
-          if (error) {
-            reject(error);
-          } 
-          else {
-            resolve();
-          }
-        });
-      }),
-    ]);
-    server = null;
+    ]).catch((e)=>{
+      console.warn(`Error during shutdown`, e);
+    });
+
+    if (server) {
+      server.close();
+      server = null;
+    }
+
   }
 
   function addProcessHandlers() {

@@ -60,6 +60,7 @@
 - [x] Added cron integration smoke test covering scheduler + event pipeline.
 - [x] Automated semantic-release workflow with changelog, npm publish, and git tagging.
 - [x] README helper example covered by automated integration test.
+- [x] Observability dashboard plots “Total rxpress requests” via Prometheus (other panels pending).
 
 ### Phase 3 – Upcoming Focus
 
@@ -81,6 +82,7 @@
 14. [x] **Lint & format automation:** wired ESLint + Prettier into CI workflow and added Husky/lint-staged pre-commit checks.
 15. [ ] **Version & release:** establish release checklist, bump `version`, add CHANGELOG entry, and prepare `npm publish` workflow.
 16. [ ] **Post-publish integration:** update server workspace to depend on published semver (instead of relative path) and verify `npm install rxpress` works in a clean environment.
+17. [x] **Observability stack:** added Docker Compose (OTel Collector + Grafana) and default server telemetry configuration. Sample Grafana dashboard auto-provisioned via docker-compose.
 
 ## Considerations & Risks
 
