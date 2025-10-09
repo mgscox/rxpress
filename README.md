@@ -36,41 +36,49 @@ import { createSimpleLogger } from './src/helpers/simple-logger.service.js';
 import { createMemoryKv } from './src/helpers/memory-kv.service.js';
 
 // Route Handlers can be auto-discovered from files, or programmatically defined
-const routes: RPCConfig[] = [{
-  type: 'api',                                          // 'api' auto-returns Content-Type of "application/json"
-  method: 'GET',                                        // 'GET' | 'POST' | 'PUT' | 'DELETE'
-  path: '/health',                                      // the http path to handle
-  middleware: [],                                       // run any ExpressJS middleware for this route
-  handler: async (req, { emit, kv, logger }) => {
-    logger.info(`/health route called`);                // log a message
-    const newValue = kv.inc('counter');                 // increment value of a key (auto-created)
-    emit('log_counter', {counter: newValue});           // emit an async-event
-    return { status: 200, body: { ok: true } };         // return JSON payload to client
+const routes: RPCConfig[] = [
+  {
+    type: 'api', // 'api' auto-returns Content-Type of "application/json"
+    method: 'GET', // 'GET' | 'POST' | 'PUT' | 'DELETE'
+    path: '/health', // the http path to handle
+    middleware: [], // run any ExpressJS middleware for this route
+    handler: async (req, { emit, kv, logger }) => {
+      logger.info(`/health route called`); // log a message
+      const newValue = kv.inc('counter'); // increment value of a key (auto-created)
+      emit('log_counter', { counter: newValue }); // emit an async-event
+      return { status: 200, body: { ok: true } }; // return JSON payload to client
+    },
   },
-}];
+];
 
 // Event Handlers can be auto-discovered from files, or programmatically defined
-const events: EventConfig[] = [{
-  subscribe: ['log_counter'],                           // handler for 'log_counter' event
-  handler: async (input, { logger }) => {
-    const { counter } = input as { counter: number };   // alternatively, type-cast the "handler" function
-    logger.debug(`Counter value is now`, counter);
+const events: EventConfig[] = [
+  {
+    subscribe: ['log_counter'], // handler for 'log_counter' event
+    handler: async (input, { logger }) => {
+      const { counter } = input as { counter: number }; // alternatively, type-cast the "handler" function
+      logger.debug(`Counter value is now`, counter);
+    },
   },
-}];
+];
 
-// Configure the server to use port 3000, automaticlaly loading from .env file
+const logger = createSimpleLogger(); // SimpleLogger is a console logger
+// Configure the server
 rxpress.init({
   config: {
-    port: 3000,
-    loadEnv: true
+    port: 3000, // serve on port 3000
+    loadEnv: true, // auto-load discovered .env files
   },
-  logger: createSimpleLogger();        // SimpleLogger is a console logger
-  kv: createMemoryKv('example-app');   // In-memory Key-Value storage
+  logger,
+  kv: createMemoryKv('example-app'), // In-memory Key-Value storage
 });
 
 // Wire-up the server
-rxpress.addHandlers({routes, events});
+rxpress.addHandlers(routes);
+rxpress.addEvents(events);
 
 // Start the server
-await rxpress.start();
+rxpress.start().catch(async (e) => {
+  await rxpress.stop(true);
+});
 ```

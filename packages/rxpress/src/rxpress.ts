@@ -69,9 +69,7 @@ export namespace rxpress {
 
     return new Promise((resolve, reject) => {
       server = http.createServer(app!);
-      server.on('error', (error) => {
-        reject(`${error}`);
-      });
+      server.on('error', reject);
       server.on('listening', () => {
         resolve({ server: server!, port: listenPort });
       });

@@ -110,10 +110,8 @@ async function main() {
   helpers.simplelLogger.info(`rxpress example server is running http://${host?.address || 'localhost'}:${boundPort}`);
 }
 
-main()
-  .catch(async (error) => {
-    console.error('Fatal error starting server:', error);
-  })
-  .finally(async () => {
-    await rxpress.stop(true);
-  });
+main().catch(async (error) => {
+  console.error('Fatal error starting server:', error);
+  await rxpress.stop(true);
+  process.exit(1);
+});
