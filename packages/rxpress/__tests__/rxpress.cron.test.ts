@@ -68,6 +68,7 @@ const result = await (async () => {
     await delay(50); // give cron handler time to settle
     assert.equal(kv.get('cron-fired'), true);
     assert.deepEqual(triggered, ['tick']);
+    console.info('rxpress.cron tests passed');
   } 
   finally {
     await rxpress.stop();

@@ -76,6 +76,7 @@ await (async () => {
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.deepEqual(payload, { ok: true });
+    console.info('readme-example tests passed');
   } 
   finally {
     await rxpress.stop();

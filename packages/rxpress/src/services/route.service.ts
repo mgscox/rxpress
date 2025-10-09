@@ -3,15 +3,39 @@ import { Subject } from 'rxjs';
 import * as z from 'zod';
 import { performance } from 'node:perf_hooks';
 import { Counter, Histogram, SpanStatusCode } from '@opentelemetry/api';
+import type { Span } from '@opentelemetry/api';
 
-import { RequestHandlerMiddleware, RequestMiddleware, RPCConfig, RPCContext, RPCHttpResult, RPCResult, rxRequest } from '../types/rpc.types.js';
+import { HandlerContext, RequestHandlerMiddleware, RequestMiddleware, RPCConfig, RPCContext, RPCHttpResult, RPCResult, RPCSSEStream, SSESendOptions, rxRequest } from '../types/rpc.types.js';
 import { EventService } from './event.service.js';
 import { Logger } from '../types/logger.types.js';
 import { KVBase } from '../types/kv.types.js';
 import { MetricService } from './metrics.service.js';
+import { SSEService } from './sse.service.js';
 
 export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
+
+  const resolveResponseSchema = (route: RPCConfig, status: number): z.ZodTypeAny | undefined => {
+    if (!route.responseSchema) {
+      return undefined;
+    }
+
+    if (route.responseSchema instanceof z.ZodObject) {
+      return route.responseSchema;
+    }
+
+    return route.responseSchema[status];
+  };
+
+  const validateResponse = <T>(route: RPCConfig, status: number, payload: T): T => {
+    const schema = resolveResponseSchema(route, status);
+
+    if (!schema) {
+      return payload as T;
+    }
+
+    return schema.parse(payload) as T;
+  };
 
   const getPayload = (param: {
     error: string;
@@ -64,19 +88,24 @@ export namespace RouteService {
     res: Response;
   }): boolean => {
     const { payload, code, route, res } = param;
-    console.warn('Server route error', payload);
 
     if (route.strict || code === 500) {
-      res.status(code || 422);
-
-      if (route.type === 'api') {
-        res.json(payload);
+      
+      switch (route.type) {
+        case 'api':
+          res.status(code || 422);
+          res.json(payload);
+          return true;
+        case 'http':
+          res.status(code || 422);
+          res.send(payload);
+          return true;
+        case 'cron':
+        case 'sse':
+        default:
+          return false;
       }
-      else {
-        res.send(payload);
-      }
 
-      return true;
     }
 
     return false;
@@ -95,7 +124,6 @@ export namespace RouteService {
   }
 
   export function start() {
-    //ready$ will never fire unless metrics are initialised
     MetricService.ready$.then(() => {
       requestCounter = MetricService.addMetrics<Counter>({
         type: 'counter',
@@ -120,12 +148,17 @@ export namespace RouteService {
 
   async function runHandler(param: { req: rxRequest; res: Response; route: RPCConfig; logger: Logger; kv: KVBase }) {
     const { req, res, route, logger, kv } = param;
-    let result!: RPCResult;
     const attributes: Record<string, string | number> = {
       method: route.method,
       type: route.type,
       path: route.path.toLowerCase(),
     };
+
+    let result: RPCResult | undefined;
+    let handlerError: unknown;
+    let sseSchema: z.ZodTypeAny | undefined;
+    let stream: undefined | RPCSSEStream = undefined;
+    let sseService: SSEService = new SSEService(req, res);
 
     try {
       if (route.bodySchema) {
@@ -164,65 +197,98 @@ export namespace RouteService {
         }
       }
 
+      if (route.type === 'sse') {
+        sseService.sendSSEHeaders();
+        stream = {
+          send: (payload: unknown, options?: SSESendOptions) => sseService.emitSsePayload(sseSchema, payload, options),
+          error:  (payload: unknown, options?: SSESendOptions) => sseService.emitSseError(payload, options),
+        }
+      }
+
+      const handlerContext: HandlerContext = {
+        emit: EventService.emit,
+        kv,
+        logger,
+        stream,
+      };
+
       try {
-        result = await route.handler(req, {
-          emit: EventService.emit,
-          kv,
-          logger,
+        result = await route.handler(req, handlerContext) as RPCResult | undefined;
+      }
+      catch (error) {
+        handlerError = error;
+      }
+
+      if (sseService.isSseRoute) {
+        if (handlerError) {
+          res.statusCode = 500;
+          logger.error?.(`SSE handler failed for ${route.path}: ${handlerError}`);
+          sseService.emitSseError(handlerError);
+        }
+        else if (result !== undefined) {
+          logger.debug?.(`SSE handler for ${route.path} returned a value; ignoring.`);
+        }
+
+        sseService.closeStream();
+        return;
+      }
+      else if (handlerError) {
+        throw handlerError;
+      }
+      else if (!result) {
+        throw new Error('RPC handler returned no result');
+      }
+
+      const status = result.status ?? 200;
+      let validatedBody = result.body;
+
+      try {
+        validatedBody = validateResponse(route, status, result.body);
+      }
+      catch (reason) {
+        const payload = getPayload({
+          error: 'Invalid API Response',
+          reason: `${reason}`,
+          route,
+          req,
         });
-        res.statusCode = result.status ?? 200;
-      }
-      catch (reason) {
-        res.statusCode = 500;
-        result = {
-          status: 500,
-          body: {
-            error: `${reason}`,
-          },
-        };
-      }
-      finally {
-        if (route.responseSchema) {
-          const toParse = route.responseSchema instanceof z.ZodObject
-            ? route.responseSchema
-            : route.responseSchema[result.status || 200] || z.object({ error: z.string() });
 
-          try {
-            toParse.parse(result.body);
-          }
-          catch (reason) {
-            const payload = getPayload({
-              error: 'Invalid API Response',
-              reason: `${reason}`,
-              route,
-              req,
-            });
-
-            if (handleError({ payload, route, res })) {
-              return;
-            }
-          }
+        if (handleError({ payload, route, res })) {
+          return;
         }
       }
 
-      try {
-        switch (route.type) {
-          case 'http': {
-            const httpResult = result as RPCHttpResult;
-            res.contentType(httpResult.mime || 'text/html');
-            res.status(result.status || 200).send(`${result.body}`);
-            break;
-          }
+      res.status(status);
 
-          case 'api': {
-            res.contentType('application/json');
-            res.status(result.status || 200).json(result.body);
-            break;
-          }
+      switch (route.type) {
+        case 'http': {
+          const httpResult = result as RPCHttpResult;
+          res.contentType(httpResult.mime || 'text/html');
+          res.send(`${validatedBody}`);
+          break;
         }
+
+        case 'api': {
+          res.contentType('application/json');
+          res.json(validatedBody);
+          break;
+        }
+
+        case 'sse':
+          throw `SSE - condition should never occur`;
+        case 'cron':
+        default:
+          break;
       }
-      catch (reason) {
-        console.error(reason);
+    }
+    catch (reason) {
+
+      if (sseService.isSseRoute) {
+        res.statusCode = res.statusCode >= 400 ? res.statusCode : 500;
+        sseService.emitSseError(reason);
+      }
+      else {
+        res.status(500);
         const payload = getPayload({
           error: 'Invalid API response',
           reason: `${reason}`,
@@ -231,8 +297,15 @@ export namespace RouteService {
         });
         handleError({ payload, code: 500, route, res });
       }
+
     }
+
     finally {
+
+      if (sseService.isSseRoute) {
+        sseService.closeStream();
+      }
+
       updateHttpMetrics(res.statusCode, req._rxpress.trace.initiated, req._rxpress.trace.start, attributes);
     }
   }
@@ -284,7 +357,7 @@ export namespace RouteService {
 
         // Run inside the captured context so downstream work sees the same trace
         MetricService.getContext().with(ctx, () => {
-          tracer.startActiveSpan(`${req.method} ${route.path}`, async (span) => {
+          tracer.startActiveSpan(`${req.method} ${route.path}`, async (span: Span) => {
             // --- Recommended HTTP attributes (newer naming)
             const ua = req.headers["user-agent"];
             const hostHeader = req.headers.host ?? "";
