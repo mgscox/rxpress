@@ -1,4 +1,4 @@
-import type { Logger as RxpressLogger, LogPayload, LogLogger } from 'rxpress';
+import type { Logger as RxpressLogger, LogPayload, LogLogger } from '../types/index.js';
 
 class SimpleLogger implements RxpressLogger {
   child(_meta: Record<string, unknown>): RxpressLogger {

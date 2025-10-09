@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { ConfigService, KVBase } from 'rxpress';
+import { ConfigService, KVBase } from '../index.js';
 
 export class MemoryKVService implements KVBase {
   private store: Record<string, unknown> = {};
