@@ -314,18 +314,20 @@ export namespace RouteService {
     const now = performance.now();
 
     const middlewareWrapper = (middleware: RequestHandlerMiddleware) => {
-      return (req: Request, res: Response, next: NextFunction) => {
+      return async (req: Request, res: Response, next: NextFunction) => {
         const middleReq = {
           ...req,
           logger,
           kv,
           emit: EventService.emit,
         } as RequestMiddleware;
-        Promise
-          .resolve(middleware(middleReq, res, next))
-          .catch(
-            (err) => next(err)
-          );
+
+        try {
+          await middleware(middleReq, res, next);
+        }
+        catch (err) {
+          next(err)
+        }
       }
     }
 
@@ -334,7 +336,6 @@ export namespace RouteService {
       `${route.flow ? `${route.flow}_` : ""}${route.method}::${route.path}`.toLowerCase();
     const pub$ = new Subject<RPCContext>();
     const method = route.method.toLowerCase() as keyof typeof router & ("get" | "post" | "put" | "delete");
-
     pubs$[signature] = pub$;
     router[method](route.path, ...(route.middleware?.map(m => middlewareWrapper(m)) || []), (req, res) => {
       // capture the active ctx at the moment the request hits Express
