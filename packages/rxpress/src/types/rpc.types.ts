@@ -1,6 +1,7 @@
 import * as z from 'zod';
 import { ZodSchema } from 'zod';
 import { NextFunction, Request, Response } from 'express';
+import type { SendFileOptions } from 'express-serve-static-core';
 
 import { KVBase } from './kv.types.js';
 import { Logger } from './logger.types.js';
@@ -40,7 +41,7 @@ export type RequestMiddleware = Request & {
   emit: Emit,
 }
 export type RequestHandlerMiddleware = (req: RequestMiddleware, res: Response, next: NextFunction) => void | Promise<void>
-export type RPCConfigBase = {
+export type RPCConfigCommon = {
   type: RPCTypes;
   name?: string;
   flow?: string;
@@ -53,8 +54,17 @@ export type RPCConfigBase = {
   bodySchema?: ZodSchema;
   responseSchema?: z.ZodObject | Record<number, z.ZodObject>;
   strict?: boolean;
+}
+export type RPCConfigSatic = {
+  staticRoute: {
+    filename: string,
+    options?: SendFileOptions,
+  };
+}
+export type RPCConfigHanlder = {
   handler: RPCFunction;
-};
+}
+export type RPCConfigBase = RPCConfigCommon & (RPCConfigSatic | RPCConfigHanlder);
 export type RPCConfig = RPCConfigBase;
 export type RPCRoutes = RPCConfig[];
 export type EventContext = { trigger: string; logger: Logger; kv: KVBase, emit: Emit };

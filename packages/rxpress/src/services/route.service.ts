@@ -5,7 +5,7 @@ import { performance } from 'node:perf_hooks';
 import { Counter, Histogram, SpanStatusCode } from '@opentelemetry/api';
 import type { Span } from '@opentelemetry/api';
 
-import { HandlerContext, RequestHandlerMiddleware, RequestMiddleware, RPCConfig, RPCContext, RPCHttpResult, RPCResult, RPCSSEStream, SSESendOptions, rxRequest } from '../types/rpc.types.js';
+import { HandlerContext, RequestHandlerMiddleware, RequestMiddleware, RPCConfig, RPCContext, RPCHttpResult, RPCResult, RPCSSEStream, SSESendOptions, rxRequest, RPCConfigSatic, RPCConfigHanlder } from '../types/rpc.types.js';
 import { EventService } from './event.service.js';
 import { Logger } from '../types/logger.types.js';
 import { KVBase } from '../types/kv.types.js';
@@ -14,6 +14,7 @@ import { SSEService } from './sse.service.js';
 
 export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
+  let staticRoutDir: string | undefined;
 
   const resolveResponseSchema = (route: RPCConfig, status: number): z.ZodTypeAny | undefined => {
     if (!route.responseSchema) {
@@ -123,7 +124,8 @@ export namespace RouteService {
     requestDuration?.record(now - startTime, attributes);
   }
 
-  export function start() {
+  export function start(config: {staticRoutDir?: string}) {
+    staticRoutDir = config.staticRoutDir;
     MetricService.ready$.then(() => {
       requestCounter = MetricService.addMetrics<Counter>({
         type: 'counter',
@@ -213,7 +215,30 @@ export namespace RouteService {
       };
 
       try {
-        result = await route.handler(req, handlerContext) as RPCResult | undefined;
+        if ((route as RPCConfigSatic).staticRoute) {
+          const {staticRoute} = route as RPCConfigSatic;
+          result = await new Promise<RPCResult>((resolve, reject) => {
+            const options = {
+              root: staticRoutDir,
+              ...staticRoute.options,
+            };
+            res.sendFile(staticRoute.filename, options, (err) => {
+              if (err) {
+                reject({
+                  status: 404, 
+                  body: route.type === 'api' ? {error: 'Resource not found'} : 'Resource not found', 
+                });
+              }
+              else {
+                res.end();  // close response so later logic knows not send further response
+                resolve({status: 200, body: 'not-used'})
+              }
+            })
+          })
+        }
+        else {
+          result = await (route as RPCConfigHanlder).handler(req, handlerContext) as RPCResult | undefined;
+        }
       }
       catch (error) {
         handlerError = error;
@@ -239,46 +264,48 @@ export namespace RouteService {
         throw new Error('RPC handler returned no result');
       }
 
-      const status = result.status ?? 200;
-      let validatedBody = result.body;
+      if (!res.closed) {
+        const status = result.status ?? 200;
+        let validatedBody = result.body;
 
-      try {
-        validatedBody = validateResponse(route, status, result.body);
-      }
-      catch (reason) {
-        const payload = getPayload({
-          error: 'Invalid API Response',
-          reason: `${reason}`,
-          route,
-          req,
-        });
-
-        if (handleError({ payload, route, res })) {
-          return;
+        try {
+          validatedBody = validateResponse(route, status, result.body);
         }
-      }
+        catch (reason) {
+          const payload = getPayload({
+            error: 'Invalid API Response',
+            reason: `${reason}`,
+            route,
+            req,
+          });
 
-      res.status(status);
-
-      switch (route.type) {
-        case 'http': {
-          const httpResult = result as RPCHttpResult;
-          res.contentType(httpResult.mime || 'text/html');
-          res.send(`${validatedBody}`);
-          break;
+          if (handleError({ payload, route, res })) {
+            return;
+          }
         }
 
-        case 'api': {
-          res.contentType('application/json');
-          res.json(validatedBody);
-          break;
-        }
+        res.status(status);
 
-        case 'sse':
-          throw `SSE - condition should never occur`;
-        case 'cron':
-        default:
-          break;
+        switch (route.type) {
+          case 'http': {
+            const httpResult = result as RPCHttpResult;
+            res.contentType(httpResult.mime || 'text/html');
+            res.send(`${validatedBody}`);
+            break;
+          }
+
+          case 'api': {
+            res.contentType('application/json');
+            res.json(validatedBody);
+            break;
+          }
+
+          case 'sse':
+            throw `SSE - condition should never occur`;
+          case 'cron':
+          default:
+            break;
+        }
       }
     }
     catch (reason) {

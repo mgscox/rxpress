@@ -60,7 +60,7 @@ export namespace rxpress {
       addProcessHandlers();
     }
 
-    RouteService.start();
+    RouteService.start({staticRoutDir: config.staticRoutDir});
     app = express();
     app.use(express.json(config.json));
   }

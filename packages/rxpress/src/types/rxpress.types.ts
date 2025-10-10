@@ -16,4 +16,5 @@ export type RxpressConfig = {
   json?: JsonOptions;
   wsPath?: string;
   next?: NextAdapterConfig;
+  staticRoutDir?: string;
 };
