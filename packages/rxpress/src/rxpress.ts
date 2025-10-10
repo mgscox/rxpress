@@ -19,6 +19,7 @@ import { CronService } from './services/cron.service.js';
 import { MetricService } from './services/metrics.service.js';
 import { ConfigService } from './services/config.service.js';
 import { WSSService } from './services/wss.service.js';
+import { NextService } from './services/next.service.js';
 
 export namespace rxpress {
   let app: express.Express | null = null;
@@ -27,6 +28,7 @@ export namespace rxpress {
   let activeKv: KVBase | null = null;
   let activeConfig: RxpressConfig | null = null;
   let hostname = '0.0.0.0';
+  let nextReady: Promise<void> | undefined;
 
   const ensureInitialized = () => {
     if (!app || !activeLogger || !activeKv || !activeConfig) {
@@ -68,26 +70,39 @@ export namespace rxpress {
     const listenPort = activeConfig?.port ?? port;
 
     return new Promise((resolve, reject) => {
-      server = http.createServer(app!);
-      server.on('error', reject);
-      server.on('listening', () => {
-        resolve({ server: server!, port: listenPort });
-      });
-      WSSService.createWs(server, activeConfig?.wsPath);
-      server.listen(listenPort, hostname);
-      EventService.add({
-        subscribe: ['wss.broadcast'],
-        handler: async (input: unknown) => {
-          const payload = (input === typeof 'BufferLike')
-            ? <BufferLike>input
-            : JSON.stringify(input);
-          WSSService.broadcast(payload);
-        },
-      }, {
-        logger: activeLogger!,
-        kv: activeKv!,
-        emit: EventService.emit,
-      })
+      const bootstrap = async () => {
+        try {
+          if (nextReady) {
+            await nextReady;
+          }
+
+          server = http.createServer(app!);
+          server.on('error', reject);
+          server.on('listening', () => {
+            resolve({ server: server!, port: listenPort });
+          });
+          WSSService.createWs(server, activeConfig?.wsPath);
+          server.listen(listenPort, hostname);
+          EventService.add({
+            subscribe: ['wss.broadcast'],
+            handler: async (input: unknown) => {
+              const payload = (input === typeof 'BufferLike')
+                ? <BufferLike>input
+                : JSON.stringify(input);
+              WSSService.broadcast(payload);
+            },
+          }, {
+            logger: activeLogger!,
+            kv: activeKv!,
+            emit: EventService.emit,
+          });
+        }
+        catch (error) {
+          reject(error);
+        }
+      };
+
+      bootstrap().catch(reject);
     });
   }
 
@@ -197,6 +212,12 @@ export namespace rxpress {
     port?: number;
   }) {
     await load(param);
+
+    if (activeConfig?.next) {
+      nextReady = NextService.configure(app!, activeConfig.next, activeLogger!);
+      await nextReady;
+    }
+
     return await createServer(param.port);
   }
 
@@ -207,8 +228,9 @@ export namespace rxpress {
     CronService.close();
     await Promise.all([
       MetricService.stop(),
-    ]).catch((e)=>{
-      console.warn(`Error during shutdown`, e);
+      NextService.stop(),
+    ]).catch((e) => {
+      console.warn('Error during shutdown', e);
     });
 
     WSSService.close();
