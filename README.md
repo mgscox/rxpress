@@ -1,84 +1,94 @@
-# rxpress
+# rxpress Monorepo
 
-## About **rxpress**
+This repository hosts the `rxpress` runtime library together with a reference application that demonstrates how to assemble event-driven HTTP APIs, static assets, websockets, cron jobs, and Next.js pages under a single Express server. The workspace is managed with npm workspaces + Lerna and ships its own linting, testing, and observability stack.
 
-`rxpress` is an event-driven, asychronous application server, built upon nodeJs and expressJs using rxjs. Event-driven systems provide the foundation for true scalability, resilience, and adaptability that modern applications demand
+## Packages
 
-- **Data drvien** HTTP requests, API interfactions, CRON jobs, Websocket connections all publish events to which common `Event Handlers` subscribe
-- **Abstraction** Server implementation only needs implement `Event Handlers`, everything else is taken care of for you
-- **Configurable** Extensive options for tailoring and configuring your specific implementation
-- **Monitoring** OpenTelemetry statistics and Flows are published automatically
-- **Validation** Requests and Responses automatically verified against zod schemas
+| Package                                  | Description                                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`packages/rxpress`](./packages/rxpress) | Published npm module that exposes the `rxpress` orchestration API, helper adapters, and TypeScript definitions.                                        |
+| [`packages/server`](./packages/server)   | Example host that consumes the library, wires in logger/KV adapters, demonstrates routing patterns, and streams telemetry to OpenTelemetry collectors. |
 
-## Concept
+## Getting Started
 
-1. **Event Trigger** an "external" action which causes an event to be emitted (e.g. HTTP request, CRON job, Websocket connection)
-2. **Event Emitters** publish events (optionally with context data) which Event Hanlders subscribe to. Anything can emit an event.
-3. **Event Subscription** determins which events are handled
-4. **Event Handlers** implement the business logic. They are inherently stateless but share context, and can interface to backend storage for persistence.
-
-## Repository
-
-This is a Lerna monorepo for `rxpress` library, it contains both a library and example server in separate packages.
-
-## Quick start
+Install the library in your application:
 
 ```bash
 npm install rxpress
 ```
 
+Create your entry point:
+
 ```ts
 import { rxpress } from 'rxpress';
 import type { RPCConfig, EventConfig } from 'rxpress';
+import { createSimpleLogger } from './adapters/simple-logger.js';
+import { createMemoryKv } from './adapters/memory-kv.js';
 
-// Copy/clone helpers from the /packages/rxpress/src/helpers folder in the rxpress repository, or roll your own
-import { createSimpleLogger } from './src/helpers/simple-logger.service.js';
-import { createMemoryKv } from './src/helpers/memory-kv.service.js';
-
-// Route Handlers can be auto-discovered from files, or programmatically defined
 const routes: RPCConfig[] = [
   {
-    type: 'api', // 'api' auto-returns Content-Type of "application/json"
-    method: 'GET', // 'GET' | 'POST' | 'PUT' | 'DELETE'
-    path: '/health', // the http path to handle
-    middleware: [], // run any ExpressJS middleware for this route
-    handler: async (req, { emit, kv, logger }) => {
-      logger.info(`/health route called`); // log a message
-      const newValue = kv.inc('counter'); // increment value of a key (auto-created)
-      emit('log_counter', { counter: newValue }); // emit an async-event
-      return { status: 200, body: { ok: true } }; // return JSON payload to client
+    type: 'api',
+    method: 'GET',
+    path: '/health',
+    handler: async (_req, { emit }) => {
+      emit({ topic: 'audit::health', data: { at: Date.now() } });
+      return { status: 200, body: { ok: true } };
     },
   },
 ];
 
-// Event Handlers can be auto-discovered from files, or programmatically defined
 const events: EventConfig[] = [
   {
-    subscribe: ['log_counter'], // handler for 'log_counter' event
-    handler: async (input, { logger }) => {
-      const { counter } = input as { counter: number }; // alternatively, type-cast the "handler" function
-      logger.debug(`Counter value is now`, counter);
-    },
+    subscribe: ['audit::health'],
+    handler: async (payload, { logger }) => logger.info('Health audit', payload as object),
   },
 ];
 
-const logger = createSimpleLogger(); // SimpleLogger is a console logger
-// Configure the server
 rxpress.init({
-  config: {
-    port: 3000, // serve on port 3000
-    loadEnv: true, // auto-load discovered .env files
-  },
-  logger,
-  kv: createMemoryKv('example-app'), // In-memory Key-Value storage
+  config: { port: 3000, loadEnv: true },
+  logger: createSimpleLogger(),
+  kv: createMemoryKv('example-app'),
 });
 
-// Wire-up the server
 rxpress.addHandlers(routes);
 rxpress.addEvents(events);
+await rxpress.start({ port: 3000 });
+```
 
-// Start the server
-rxpress.start().catch(async (e) => {
-  await rxpress.stop(true);
-});
+Comprehensive usage guides (routing, events, cron, observability, Next.js integration, static asset serving, and adapter patterns) live under [`packages/rxpress/docs`](./packages/rxpress/docs).
+
+## Observability & Tooling
+
+- **OpenTelemetry**: metrics, histograms, and traces are emitted through the collector configuration in [`otel/collector-config.yaml`](./otel/collector-config.yaml).
+- **Grafana & Prometheus**: bring up the docker compose stack to inspect dashboards and Jaeger traces.
+- **Semantic Release**: publishing is automated via `npm run release`.
+
+## Local development
+
+```bash
+git clone https://github.com/mgscox/newintel.git
+cd newintel
+npm install
+
+# run the example server (listens on PORT from .env or 3002)
+npx nx run server:dev
+
+# in another shell hit the health endpoint
+curl http://localhost:3002/api/v1/example
+```
+
+### Common Workspace Tasks
+
+```bash
+# compile both packages
+npm run build
+
+# run the rxpress test suite
+npm test --workspace rxpress
+
+# lint all sources
+npm run lint
+
+# start the observability stack (Jaeger + Prometheus + Grafana)
+docker compose up -d
 ```

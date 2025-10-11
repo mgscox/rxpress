@@ -1,0 +1,115 @@
+# Getting Started
+
+This guide walks through the minimal steps required to bootstrap an application with `rxpress`.
+
+## Prerequisites
+
+- Node.js 20 or newer
+- npm (comes with Node.js)
+- TypeScript project configured with ESM (`"type": "module"` in `package.json`)
+
+## Install
+
+```bash
+npm install rxpress
+```
+
+You bring your own logger and key/value adapters. Copy the reference implementations from [`src/helpers`](../src/helpers) or wire in your existing infrastructure.
+
+```ts
+// adapters/logger.ts
+import pino from 'pino';
+import type { Logger, LogLogger } from 'rxpress';
+
+const base = pino({ level: process.env.LOG_LEVEL ?? 'info' });
+
+export const logger: Logger = {
+  child(meta) {
+    const child = base.child(meta);
+    return { ...logger, info: child.info.bind(child) };
+  },
+  info: (...args) => base.info(...args),
+  error: (...args) => base.error(...args),
+  debug: (...args) => base.debug(...args),
+  warn: (...args) => base.warn(...args),
+  log: (payload) => base.info(payload),
+  addListener(_cb: LogLogger) {
+    /* optional: forward structured logs elsewhere */
+  },
+};
+```
+
+```ts
+// adapters/kv.ts
+import type { KVBase } from 'rxpress';
+
+const memory = new Map<string, unknown>();
+
+export const kv: KVBase = {
+  set: (key, value) => memory.set(key, value),
+  get: (key) => memory.get(key),
+  has: (key) => memory.has(key),
+  del: (key) => memory.delete(key),
+};
+```
+
+## Bootstrapping
+
+```ts
+import { rxpress } from 'rxpress';
+import type { RPCConfig, EventConfig } from 'rxpress';
+import { logger } from './adapters/logger.js';
+import { kv } from './adapters/kv.js';
+
+const routes: RPCConfig[] = [
+  {
+    type: 'api',
+    method: 'GET',
+    path: '/health',
+    handler: async (_req, { emit }) => {
+      emit({ topic: 'audit::health', data: { timestamp: Date.now() } });
+      return { status: 200, body: { ok: true } };
+    },
+  },
+];
+
+const events: EventConfig[] = [
+  {
+    subscribe: ['audit::health'],
+    handler: async (payload, { logger }) => logger.info('Audit', payload as object),
+  },
+];
+
+rxpress.init({
+  config: {
+    port: 3000,
+    loadEnv: true,
+    metrics: {
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
+    },
+  },
+  logger,
+  kv,
+});
+
+rxpress.addHandlers(routes);
+rxpress.addEvents(events);
+
+await rxpress.start({ port: 3000 });
+```
+
+## Auto-loading by Convention
+
+Instead of registering handlers programmatically, supply directories that contain `*.handler.js`, `*.event.js`, or `*.cron.js` files. Each module should export a `config` object compatible with the respective type.
+
+```ts
+await rxpress.load({
+  handlerDir: new URL('./handlers', import.meta.url).pathname,
+  eventDir: new URL('./events', import.meta.url).pathname,
+  cronDir: new URL('./crons', import.meta.url).pathname,
+});
+```
+
+If you author handlers in TypeScript, compile them as part of your build step and point `handlerDir`/`eventDir`/`cronDir` at the emitted JavaScript (for example, `dist/handlers`). This keeps the runtime loading simple while letting you maintain source files in `src/`.
+
+With this in place you can keep feature-specific logic next to its schema definitions and co-locate tests.
