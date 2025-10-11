@@ -3,10 +3,11 @@ import { ZodSchema } from 'zod';
 import { NextFunction, Request, Response } from 'express';
 import type { SendFileOptions } from 'express-serve-static-core';
 
-import { KVBase } from './kv.types.js';
+import { KVBase, KVPath } from './kv.types.js';
 import { Logger } from './logger.types.js';
 import { Emit } from './emit.types.js';
 import { Context } from './metrics.types.js';
+import { RunContext } from './run.types.js';
 
 export type rxRequest = Request & {_rxpress: {trace: {initiated: number, start: number}}, user?: {id?: string}}
 export type RPCTypes = 'http' | 'api' | 'cron' | 'sse';
@@ -28,7 +29,9 @@ export interface RPCSSEStream<T = unknown> {
 export type HandlerContext = {
   emit: Emit;
   kv: KVBase;
+  kvPath: KVPath;
   logger: Logger;
+  run: RunContext;
   stream?: RPCSSEStream;
 };
 export type RPCFunction = (
@@ -67,7 +70,14 @@ export type RPCConfigHanlder = {
 export type RPCConfigBase = RPCConfigCommon & (RPCConfigSatic | RPCConfigHanlder);
 export type RPCConfig = RPCConfigBase;
 export type RPCRoutes = RPCConfig[];
-export type EventContext = { trigger: string; logger: Logger; kv: KVBase, emit: Emit };
+export type EventContext = {
+  trigger: string;
+  logger: Logger;
+  kv: KVBase;
+  kvPath: KVPath;
+  emit: Emit;
+  run?: RunContext;
+};
 export type EventFunction = <T>(input: T, ctx: EventContext) => MaybePromise<void>;
 export type EventConfig = {
   subscribe: string[];

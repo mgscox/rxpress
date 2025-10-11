@@ -11,6 +11,8 @@ import { Logger } from '../types/logger.types.js';
 import { KVBase } from '../types/kv.types.js';
 import { MetricService } from './metrics.service.js';
 import { SSEService } from './sse.service.js';
+import { createKVPath } from './kv-path.service.js';
+import { createRun as createRunScope, releaseRun as releaseRunScope } from './run.service.js';
 
 export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
@@ -156,11 +158,21 @@ export namespace RouteService {
       path: route.path.toLowerCase(),
     };
 
+    const run = await createRunScope(kv);
+    const kvPath = createKVPath(kv);
     let result: RPCResult | undefined;
     let handlerError: unknown;
     let sseSchema: z.ZodTypeAny | undefined;
     let stream: undefined | RPCSSEStream = undefined;
-    let sseService: SSEService = new SSEService(req, res);
+    const sseService: SSEService = new SSEService(req, res);
+
+    const handlerContext: HandlerContext = {
+      emit: (param) => EventService.emit({ ...param, run }),
+      kv,
+      kvPath,
+      logger,
+      run,
+    };
 
     try {
       if (route.bodySchema) {
@@ -207,27 +219,22 @@ export namespace RouteService {
         }
       }
 
-      const handlerContext: HandlerContext = {
-        emit: EventService.emit,
-        kv,
-        logger,
-        stream,
-      };
+      handlerContext.stream = stream;
 
       try {
         if ((route as RPCConfigSatic).staticRoute) {
           const {staticRoute} = route as RPCConfigSatic;
-          result = await new Promise<RPCResult>((resolve, reject) => {
+          result = await new Promise<RPCResult>((resolve) => {
             const options = {
               root: staticRoutDir,
               ...staticRoute.options,
             };
             res.sendFile(staticRoute.filename, options, (err) => {
               if (err) {
-                reject({
-                  status: 404, 
-                  body: route.type === 'api' ? {error: 'Resource not found'} : 'Resource not found', 
-                });
+                const notFoundResult = route.type === 'api'
+                  ? { status: 404, body: { error: 'Resource not found' } }
+                  : { status: 404, body: 'Resource not found' };
+                resolve(notFoundResult as RPCResult);
               }
               else {
                 res.end();  // close response so later logic knows not send further response
@@ -328,12 +335,18 @@ export namespace RouteService {
     }
 
     finally {
-
       if (sseService.isSseRoute) {
         sseService.closeStream();
       }
 
       updateHttpMetrics(res.statusCode, req._rxpress.trace.initiated, req._rxpress.trace.start, attributes);
+
+      try {
+        await releaseRunScope(run.id);
+      }
+      catch (error) {
+        logger.error?.('Failed to release run scope', { error: `${error}` });
+      }
     }
   }
 

@@ -61,7 +61,9 @@ await (async () => {
     kv,
   });
 
-  const { port } = await rxpress.start({ port: 0 });
+  const { server, port: requestedPort } = await rxpress.start({ port: 0 });
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : requestedPort;
 
   try {
     const response = await fetch(`http://127.0.0.1:${port}/next-health`);

@@ -61,10 +61,13 @@ export namespace NextService {
         return;
       }
 
-      const mountPath = config.basePath ?? '*';
-      const pathPattern = mountPath === '*' ? '*' : mountPath;
+      const middleware = async (req: Request, res: Response, nextFn: NextFunction) => {
+        const originalUrl = req.url;
 
-      app.all(pathPattern, async (req: Request, res: Response, nextFn: NextFunction) => {
+        if (config.basePath && config.basePath !== '*' && config.basePath !== '/*' && req.originalUrl) {
+          req.url = req.originalUrl;
+        }
+
         try {
           await handler(req, res);
         }
@@ -72,7 +75,17 @@ export namespace NextService {
           logger.error?.('Next.js request handler failed', { error: `${error}` });
           nextFn(error);
         }
-      });
+        finally {
+          req.url = originalUrl;
+        }
+      };
+
+      if (!config.basePath || config.basePath === '*' || config.basePath === '/*') {
+        app.use(middleware);
+      }
+      else {
+        app.use(config.basePath, middleware);
+      }
 
       logger.info?.('Next.js integration ready');
     })();

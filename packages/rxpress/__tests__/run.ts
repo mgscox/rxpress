@@ -4,6 +4,10 @@ const tests = [
   './rxpress.wss.test.ts',
   './rxpress.sse.test.ts',
   './rxpress.cron.test.ts',
+  './rxpress.cron-retry.test.ts',
+  './rxpress.static.test.ts',
+  './rxpress.next.test.ts',
+  './rxpress.run-context.test.ts',
   './readme-example.test.ts',
 ];
 

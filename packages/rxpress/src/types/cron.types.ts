@@ -1,11 +1,23 @@
 import { Emit } from './emit.types.js';
-import { KVBase } from './kv.types.js';
+import { KVBase, KVPath } from './kv.types.js';
 import { Logger } from './logger.types.js';
+import { RunContext } from './run.types.js';
 
-export type CronHandler = (now: number, ctx: { logger: Logger; kv: KVBase; emit: Emit }) => void;
+export type CronHandlerResult = void | { retryMs?: number };
+
+export type CronHandler = (
+  now: number,
+  ctx: { logger: Logger; kv: KVBase; kvPath: KVPath; emit: Emit; run: RunContext },
+) => CronHandlerResult | Promise<CronHandlerResult>;
+
+export type CronRetryConfig = {
+  maxRetries?: number;
+  delayMs?: number;
+};
 
 export type CronConfig = {
   cronTime: string;
   timeZone?: string;
   handler: CronHandler;
+  retry?: CronRetryConfig;
 };
