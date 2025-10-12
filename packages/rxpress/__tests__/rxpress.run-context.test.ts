@@ -55,6 +55,7 @@ await (async () => {
       type: 'api',
       method: 'GET',
       path: '/run-id',
+      emits: ['audit::run'],
       handler: async (_req, ctx) => {
         await ctx.run.set('request.id', ctx.run.id);
         const retrieved = await ctx.run.get('request.id');

@@ -54,6 +54,7 @@ const result = await (async () => {
 
   const cronConfig: CronConfig = {
     cronTime: '*/1 * * * * *',
+    emits: ['cron::fired'],
     handler: (_now, { emit, kv: contextKv }) => {
       contextKv.set('cron-fired', true);
       emit({ topic: 'cron::fired', data: 'tick' });

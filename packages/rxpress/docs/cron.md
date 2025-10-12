@@ -1,6 +1,6 @@
 # Cron Jobs
 
-`rxpress` schedules cron jobs with the same context used by HTTP routes: `logger`, `kv`, and `emit` are available so you can share logic across transports.
+`rxpress` schedules cron jobs with the same context used by HTTP routes: `logger`, `kv`, and `emit` are available so you can share logic across transports. Declare any events a cron emits via the `emits` array so the runtime can verify that subscribers exist.
 
 ```ts
 const cleanupJob: CronConfig = {
@@ -10,6 +10,7 @@ const cleanupJob: CronConfig = {
     maxRetries: 2,
     delayMs: 2000,
   },
+  emits: ['orders::pruned'],
   handler: async ({ logger, emit, run }) => {
     const removed = await pruneOrders();
     logger.info('Pruned stale orders', { removed });

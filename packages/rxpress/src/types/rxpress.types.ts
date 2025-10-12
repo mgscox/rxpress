@@ -27,3 +27,10 @@ export type RxpressConfig = {
   helmet?: HelmetOptions;
   session?: CookieSessionOptions
 };
+export type RxpressStartConfig = {
+  eventDir?: string;
+  handlerDir?: string;
+  cronDir?: string;
+  port?: number;
+  validateEvents?: boolean;
+}

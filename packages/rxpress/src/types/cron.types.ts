@@ -20,4 +20,5 @@ export type CronConfig = {
   timeZone?: string;
   handler: CronHandler;
   retry?: CronRetryConfig;
+  emits?: string[];
 };

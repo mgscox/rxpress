@@ -4,13 +4,13 @@
 
 ## WebSockets
 
-The built-in `WSSService` upgrades the HTTP server to accept WebSocket connections once `rxpress.start` runs. Broadcast messages by emitting the `wss.broadcast` event:
+The built-in `WSSService` upgrades the HTTP server to accept WebSocket connections once `rxpress.start` runs. Broadcast messages by emitting the `SYS::WSS::BROADCAST` event:
 
 ```ts
 rxpress.addEvents({
-  subscribe: ['notifications::publish'],
+  subscribe: ['SYS::WSS::CONNECTION'],
   handler: async (payload, { emit }) => {
-    emit({ topic: 'wss.broadcast', data: payload });
+    emit({ topic: 'SYS::WSS::BROADCAST', data: payload });
   },
 });
 ```

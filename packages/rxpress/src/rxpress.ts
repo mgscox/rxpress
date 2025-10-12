@@ -14,6 +14,7 @@ import {
   KVBase,
   BufferLike,
   HelmetOptions,
+  RxpressStartConfig,
 } from './types/index.js';
 
 import { EventService } from './services/event.service.js';
@@ -36,11 +37,58 @@ export namespace rxpress {
   let activeConfig: RxpressConfig | null = null;
   let hostname = '0.0.0.0';
   let nextReady: Promise<void> | undefined;
+  const emitTopics = new Map<string, Set<string>>();
+  const handlerTopics = new Map<string, Set<string>>();
 
   const ensureInitialized = () => {
     if (!app || !activeLogger || !activeKv || !activeConfig) {
       throw new Error('rxpress.init() must be called before invoking this function.');
     }
+  };
+
+  const registerEmit = (topic: string, source: string) => {
+    const entry = emitTopics.get(topic) ?? new Set<string>();
+    entry.add(source);
+    emitTopics.set(topic, entry);
+  };
+
+  const registerSubscription = (topic: string, source: string) => {
+    const entry = handlerTopics.get(topic) ?? new Set<string>();
+    entry.add(source);
+    handlerTopics.set(topic, entry);
+  };
+
+  const trackRoute = (route: RPCConfig, origin: string) => {
+    if (route.emits) {
+      for (const topic of route.emits) {
+        registerEmit(topic, origin);
+      }
+    }
+  };
+
+  const trackEvent = <T>(event: EventConfig<T>, origin: string) => {
+    for (const topic of event.subscribe) {
+      registerSubscription(topic, origin);
+    }
+
+    if (event.emits) {
+      for (const topic of event.emits) {
+        registerEmit(topic, `${origin}::emit`);
+      }
+    }
+  };
+
+  const trackCron = (cron: CronConfig, origin: string) => {
+    if (cron.emits) {
+      for (const topic of cron.emits) {
+        registerEmit(topic, origin);
+      }
+    }
+  };
+
+  const resetTracking = () => {
+    emitTopics.clear();
+    handlerTopics.clear();
   };
 
   export function init(param: { config: RxpressConfig; logger: Logger; kv: KVBase }): void {
@@ -50,6 +98,7 @@ export namespace rxpress {
     activeLogger = logger;
     activeKv = kv;
     hostname = config.hostname || hostname;
+    resetTracking();
 
     if (config.rootDir) {
       ConfigService.setRootDir(config.rootDir);
@@ -116,7 +165,7 @@ export namespace rxpress {
           WSSService.createWs(server, activeConfig?.wsPath);
           server.listen(listenPort, hostname);
           EventService.add({
-            subscribe: ['wss.broadcast'],
+            subscribe: ['SYS::WSS::BROADCAST'],
             handler: async (input: unknown) => {
               const payload = (input === typeof 'BufferLike')
                 ? <BufferLike>input
@@ -128,6 +177,7 @@ export namespace rxpress {
             kv: activeKv!,
             emit: EventService.emit,
           });
+          registerSubscription('SYS::WSS::BROADCAST', 'internal:wss-broadcast');
         }
         catch (error) {
           reject(error);
@@ -144,6 +194,7 @@ export namespace rxpress {
     const config = module.config || module.default;
 
     if (config) {
+      trackEvent(config, `event:${file}`);
       EventService.add(config, { logger: activeLogger!, kv: activeKv!, emit: EventService.emit });
     } 
     else {
@@ -157,6 +208,8 @@ export namespace rxpress {
     const route = module.config || module.default;
 
     if (route) {
+      const label = route.name ?? `${route.method} ${route.path}`;
+      trackRoute(route, `route:${label}`);
       const router = RouteService.addHandler(route, activeLogger!, activeKv!);
       app!.use(router);
     } 
@@ -171,6 +224,11 @@ export namespace rxpress {
     const config = module.config || module.default;
 
     if (config) {
+      const entries = Array.isArray(config) ? config : [config];
+      entries.forEach((cron, index) => {
+        const label = cron.handler.name || `cron#${index}`;
+        trackCron(cron, `cron:${label}`);
+      });
       CronService.add(config, { logger: activeLogger!, kv: activeKv! });
     } 
     else {
@@ -188,6 +246,7 @@ export namespace rxpress {
     const entries = Array.isArray(events) ? events : [events];
 
     for (const event of entries) {
+      trackEvent(event, 'inline-event');
       EventService.add(event, { logger: activeLogger!, kv: activeKv!, emit: EventService.emit });
     }
   }
@@ -202,6 +261,8 @@ export namespace rxpress {
     const entries = Array.isArray(handlers) ? handlers : [handlers];
 
     for (const handler of entries) {
+      const label = handler.name ?? `${handler.method} ${handler.path}`;
+      trackRoute(handler, `inline-route:${label}`);
       const router = RouteService.addHandler(handler, activeLogger!, activeKv!);
       app!.use(router);
     }
@@ -217,6 +278,8 @@ export namespace rxpress {
     const entries = Array.isArray(crons) ? crons : [crons];
 
     for (const cron of entries) {
+      const label = cron.handler.name ?? 'inline-cron';
+      trackCron(cron, `inline-cron:${label}`);
       CronService.add(cron, { logger: activeLogger!, kv: activeKv! });
     }
   }
@@ -237,20 +300,61 @@ export namespace rxpress {
     }
   }
 
-  export async function start(param: {
-    eventDir?: string;
-    handlerDir?: string;
-    cronDir?: string;
-    port?: number;
-  }) {
+  export async function start(param: RxpressStartConfig) {
+    const {validateEvents = true, port} = param;
     await load(param);
+
+    if (validateEvents) {
+      const missingHandlers: Array<{ topic: string; sources: string[] }> = [];
+      const unusedHandlers: Array<{ topic: string; sources: string[] }> = [];
+
+      for (const [topic, sources] of emitTopics.entries()) {
+        if (topic.startsWith('SYS::')) {
+          continue;
+        }
+
+        if (!handlerTopics.has(topic)) {
+          missingHandlers.push({ topic, sources: [...sources] });
+        }
+      }
+
+      for (const [topic, sources] of handlerTopics.entries()) {
+        if (topic.startsWith('SYS::')) {
+          continue;
+        }
+
+        if (!emitTopics.has(topic)) {
+          unusedHandlers.push({ topic, sources: [...sources] });
+        }
+      }
+
+      if (missingHandlers.length || unusedHandlers.length) {
+        const details: string[] = [];
+
+        if (missingHandlers.length) {
+          const formatted = missingHandlers
+            .map(({ topic, sources }) => `${topic} ← emitted by ${sources.join(', ')}`)
+            .join('; ');
+          details.push(`unmatched emits: ${formatted}`);
+        }
+
+        if (unusedHandlers.length) {
+          const formatted = unusedHandlers
+            .map(({ topic, sources }) => `${topic} ← handlers ${sources.join(', ')}`)
+            .join('; ');
+          details.push(`handlers without emit: ${formatted}`);
+        }
+
+        throw new Error(`[rxpress] Event validation failed [${details.join(' | ')}] - you can disable this check by setting {"validateEvents": false} (not recommended)`);
+      }
+    }
 
     if (activeConfig?.next) {
       nextReady = NextService.configure(app!, activeConfig.next, activeLogger!);
       await nextReady;
     }
 
-    return await createServer(param.port);
+    return await createServer(port);
   }
 
   export async function stop(critical = false): Promise<void> {

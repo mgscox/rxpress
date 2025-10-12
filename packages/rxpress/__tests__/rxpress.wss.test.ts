@@ -57,19 +57,19 @@ await (async () => {
 
   const events: EventConfig[] = [
     {
-      subscribe: ['wss.connection'],
+      subscribe: ['SYS::WSS::CONNECTION'],
       handler: async (payload) => {
         connectionEvents.push(payload);
       },
     },
     {
-      subscribe: ['wss.message'],
+      subscribe: ['SYS::WSS::MESSAGE'],
       handler: async (payload) => {
         messageEvents.push(payload);
       },
     },
     {
-      subscribe: ['wss.ping'],
+      subscribe: ['SYS::WSS::ROUTE::ping'],
       handler: async (payload) => {
         routedEvents.push(payload);
       },
@@ -116,16 +116,16 @@ await (async () => {
     });
 
     await delay(20);
-    assert.equal(connectionEvents.length, 1, 'expected wss.connection event');
+    assert.equal(connectionEvents.length, 1, 'expected SYS::WSS::CONNECTION event');
 
     const pingPayload = { path: 'ping', message: 'hello' };
     client.send(JSON.stringify(pingPayload));
 
     await delay(25);
 
-    assert.equal(messageEvents.length, 1, 'expected wss.message event');
+    assert.equal(messageEvents.length, 1, 'expected SYS::WSS::MESSAGE event');
     const routedEvent = routedEvents.at(0) as { data?: unknown } | undefined;
-    assert.ok(routedEvent, 'expected wss.ping event');
+    assert.ok(routedEvent, 'expected SYS::WSS::ROUTE::ping event');
     const message = routedEvent?.data as unknown;
     const receivedString = (() => {
       if (!message) {

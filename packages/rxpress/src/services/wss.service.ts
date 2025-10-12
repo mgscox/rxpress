@@ -9,10 +9,10 @@ export namespace WSSService {
   export function createWs(server: http.Server, path = '/') {
     wss = new WebSocketServer({ server, path }); 
     wss.on('listening', () => {
-      EventService.emit({topic: 'wss.start', data: {}});
+      EventService.emit({topic: 'SYS::WSS::START', data: {}});
     })
     wss.on('connection', (ws, req) => {
-      EventService.emit({topic: 'wss.connection', data: { ws, req }});
+      EventService.emit({topic: 'SYS::WSS::CONNECTION', data: { ws, req }});
       const pingInterval = setInterval(
         () => ws.ping(), 
         30_000
@@ -24,18 +24,18 @@ export namespace WSSService {
         }
         
         try {
-          EventService.emit({topic: 'wss.message', data: {ws, data, req}});
+          EventService.emit({topic: 'SYS::WSS::MESSAGE', data: {ws, data, req}});
           const json = JSON.parse(Buffer.from(`${data}`).toString());
 
           if (json.path) {
-            EventService.emit({topic: `wss.${json.path}`, data: {ws, data, req}});
+            EventService.emit({topic: `SYS::WSS::ROUTE::${json.path}`, data: {ws, data, req}});
           }
         }
         catch { /* Payload was not JSON */ }
       })
       ws.on('close', () => {
         clearInterval(pingInterval);
-        EventService.emit({topic: 'wss.close', data: {}});
+        EventService.emit({topic: 'SYS::WSS::CLOSE', data: {}});
       })
     });        
   }

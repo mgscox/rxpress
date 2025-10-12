@@ -69,6 +69,7 @@ Because handlers run on RxJS observables you can fan-out, buffer, or throttle st
 - **Keep handlers idempotent.** They may be triggered from cron jobs or retries.
 - **Emit domain events, not implementation details.** For example `orders::created` rather than `sql::inserted`.
 - **Leverage adapters.** Use the provided `logger` and `kv` instances so that tests can inject in-memory substitutes.
+- **Register emitters.** Populate the `emits` array on routes and cron jobs so `rxpress` can validate that every topic has a matching subscriber.
 - **Enable strict validation for shared contracts.** Provide a Zod schema + `strict: true` to reject malformed payloads early; optional schemas without `strict` still attempt parsing but fall back to the original data on failure.
 
 See [`packages/rxpress/__tests__/rxpress.integration.test.ts`](../__tests__/rxpress.integration.test.ts) for an end-to-end example that asserts emitted events.

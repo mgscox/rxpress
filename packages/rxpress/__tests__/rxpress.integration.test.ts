@@ -64,6 +64,7 @@ await (async () => {
     method: 'GET',
     path: '/ping',
     middleware: [],
+    emits: ['test::ping'],
     handler: async (_req, ctx) => {
       ctx.emit({ topic: 'test::ping', data: 'pong' });
       return { status: 200, body: { ok: true } };
