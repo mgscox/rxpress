@@ -20,6 +20,7 @@ import { MetricService } from './services/metrics.service.js';
 import { ConfigService } from './services/config.service.js';
 import { WSSService } from './services/wss.service.js';
 import { NextService } from './services/next.service.js';
+import { DocumentationService } from './services/documentation.service.js';
 
 export namespace rxpress {
   let app: express.Express | null = null;
@@ -52,6 +53,8 @@ export namespace rxpress {
       ConfigService.loadEnv(config.envFiles);
     }
 
+    DocumentationService.configure(config.documentation);
+
     if (config.metrics) {
       MetricService.start(config.metrics);
     }
@@ -60,8 +63,9 @@ export namespace rxpress {
       addProcessHandlers();
     }
 
-    RouteService.start({staticRoutDir: config.staticRoutDir});
+    RouteService.start({ staticRoutDir: config.staticRoutDir });
     app = express();
+    DocumentationService.attach(app);
     app.use(express.json(config.json));
   }
 
@@ -232,6 +236,8 @@ export namespace rxpress {
     ]).catch((e) => {
       console.warn('Error during shutdown', e);
     });
+
+    DocumentationService.reset();
 
     WSSService.close();
     server?.close();

@@ -13,6 +13,7 @@ import { MetricService } from './metrics.service.js';
 import { SSEService } from './sse.service.js';
 import { createKVPath } from './kv-path.service.js';
 import { createRun as createRunScope, releaseRun as releaseRunScope } from './run.service.js';
+import { DocumentationService } from './documentation.service.js';
 
 export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
@@ -472,6 +473,8 @@ export namespace RouteService {
         });
       },
     });
+
+    DocumentationService.registerRoute(route);
 
     return router;
   }

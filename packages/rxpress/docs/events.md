@@ -39,7 +39,8 @@ Event handlers receive:
 
 - `trigger`: topic name
 - `logger`
-- `kv`
+- `kv` / `kvPath`: persistent storage adapters (direct key lookup + dot-path helpers)
+- `run`: run-scoped store that is cleared automatically when work completes
 - `emit`: emit additional events
 
 Because handlers run on RxJS observables you can fan-out, buffer, or throttle streams with custom operators if desired.

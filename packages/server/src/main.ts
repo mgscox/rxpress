@@ -96,6 +96,13 @@ async function main() {
           level: DiagLogLevel.ALL
         }
       },
+      documentation: {
+        enabled: true,
+        title: 'Example API',
+        version: '2.0.0',
+        path: '/openapi.json',
+        description: 'Public endpoints exposed by the Example service',
+      },
     },
     logger: helpers.simplelLogger,
     kv: helpers.createMemoryKv('example_server', false),

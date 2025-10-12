@@ -66,3 +66,29 @@ Reference implementations live in [`src/helpers`](../src/helpers). They are inte
 ## Testing
 
 When writing unit tests, provide in-memory adapters and inspect the resulting state to assert behaviour. The test utilities in `packages/rxpress/__tests__` showcase this pattern.
+
+## Run-Scoped Storage
+
+Every request/cron/event gets a unique run identifier. Access a run-scoped store via `ctx.run`:
+
+```ts
+const route: RPCConfig = {
+  type: 'api',
+  method: 'GET',
+  path: '/profile',
+  handler: async (_req, ctx) => {
+    await ctx.run.set('profile.id', ctx.run.id);
+    const cached = await ctx.run.get('profile.id');
+    return { status: 200, body: { id: cached } };
+  },
+};
+```
+
+The run store is automatically created at the beginning of the request and deleted once all downstream work (including event handlers) completes.
+
+Use `ctx.kvPath` for dot-notation access to your persistent KV backend:
+
+```ts
+await ctx.kvPath.set('session.counter', 1);
+const value = await ctx.kvPath.get<number>('session.counter');
+```

@@ -7,6 +7,7 @@ const tests = [
   './rxpress.cron-retry.test.ts',
   './rxpress.static.test.ts',
   './rxpress.next.test.ts',
+  './rxpress.documentation.test.ts',
   './rxpress.run-context.test.ts',
   './readme-example.test.ts',
 ];

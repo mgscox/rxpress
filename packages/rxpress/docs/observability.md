@@ -52,6 +52,7 @@ The repository includes an example stack (`./docker/docker-compose.yml`) that wi
 - **prometheus** – scrapes the collector at `otel-collector:8889`.
 - **grafana** – pre-provisioned with the example dashboard `rxpress Observability` and wired into Prometheus and Jaeger.
 - **jaeger** – exposes the trace UI at `http://localhost:16686`.
+- **swagger-ui** – renders your OpenAPI document (default URL: `http://localhost:8081/?url=http://localhost:3002/openapi.json`). Override the JSON location with `SWAGGER_UI_URL` or set `URL` in the compose file.
 
 Copy, or clone, the docker folder and bring the stack up with:
 

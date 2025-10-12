@@ -55,6 +55,23 @@ rxpress.addEvents(events);
 await rxpress.start({ port: 3000 });
 ```
 
+Optionally publish an OpenAPI spec alongside your routes:
+
+```ts
+rxpress.init({
+  config: {
+    port: 3000,
+    documentation: {
+      enabled: true,
+      version: '1.0.0',
+      path: '/openapi.json',
+    },
+  },
+  logger: createSimpleLogger(),
+  kv: createMemoryKv('example-app'),
+});
+```
+
 Comprehensive usage guides (routing, events, cron, observability, Next.js integration, static asset serving, and adapter patterns) live under [`packages/rxpress/docs`](./packages/rxpress/docs).
 
 ## Observability & Tooling

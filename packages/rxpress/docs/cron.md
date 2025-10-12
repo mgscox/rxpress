@@ -10,9 +10,10 @@ const cleanupJob: CronConfig = {
     maxRetries: 2,
     delayMs: 2000,
   },
-  handler: async ({ logger, emit }) => {
+  handler: async ({ logger, emit, run }) => {
     const removed = await pruneOrders();
     logger.info('Pruned stale orders', { removed });
+    await run.set('cleanup.lastRemoved', removed);
     emit({ topic: 'orders::pruned', data: { removed } });
   },
 };
@@ -34,6 +35,8 @@ See [Cron Retries](./cron-retries.md) for detailed behaviour and examples.
 ## Error Handling
 
 When a handler throws, `rxpress` logs the error, applies the retry policy if configured, and continues with the next scheduled run. Wrap mission-critical logic in try/catch when you need custom compensating actions.
+
+The `run` context exposes an ephemeral key/value store that is cleared automatically when the cron run (including retries and emitted events) finishes. Use it to share temporary state across helpers without polluting your persistent backend.
 
 ## Testing
 

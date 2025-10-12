@@ -113,3 +113,24 @@ await rxpress.load({
 If you author handlers in TypeScript, compile them as part of your build step and point `handlerDir`/`eventDir`/`cronDir` at the emitted JavaScript (for example, `dist/handlers`). This keeps the runtime loading simple while letting you maintain source files in `src/`.
 
 With this in place you can keep feature-specific logic next to its schema definitions and co-locate tests.
+
+## Generating OpenAPI Specs
+
+`rxpress` can emit an OpenAPI document describing your routes. Enable the generator when initialising the server:
+
+```ts
+rxpress.init({
+  config: {
+    documentation: {
+      enabled: true,
+      version: '1.0.0',
+      title: 'Starter API',
+      path: '/openapi.json',
+    },
+  },
+  logger,
+  kv,
+});
+```
+
+After the server starts, fetch the spec from `/openapi.json` and feed it to Swagger UI, ReDoc, or code generators.

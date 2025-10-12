@@ -90,6 +90,10 @@ rxpress.addHandlers([
 
 This setup plays well with client-side routers: Angular/React/Vue handle deep links client-side, while API routes and other RPC handlers continue to run on the same Express instance. If you later adopt Next.js for server rendering, you can enable the optional `next` integration without changing your static routes.
 
+## Documenting Routes
+
+Enable the documentation generator to publish an OpenAPI specification for every `api`/`http` route. See [API Documentation](./documentation.md) for details.
+
 ## Server-Sent Events
 
 Declare SSE routes with `type: 'sse'`. The handler receives a `stream` helper for sending data/events and signals errors.

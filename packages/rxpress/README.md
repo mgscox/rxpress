@@ -66,6 +66,7 @@ await rxpress.start({ port: 3000 });
 | [Routing](./docs/routing.md)                 | API/HTTP routes, static files, SSE, cron jobs, and Next.js integration.       |
 | [Events](./docs/events.md)                   | Emitting and subscribing to domain events with shared context.                |
 | [Cron](./docs/cron.md)                       | Scheduling background jobs, retries, and graceful shutdown.                   |
+| [Documentation](./docs/documentation.md)     | Generating OpenAPI specifications from routes and Zod schemas.                |
 | [Adapters](./docs/adapters.md)               | Building logger/KV adapters and reusing the helper implementations.           |
 | [Realtime](./docs/realtime.md)               | WebSockets and server-sent events.                                            |
 | [Next.js](./docs/nextjs.md)                  | Serving Next apps alongside RPC routes, custom hooks, and testing strategies. |
