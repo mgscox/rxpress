@@ -94,11 +94,11 @@ npx nx run server:dev
 curl http://localhost:3002/api/v1/example
 ```
 
-### Common Workspace Tasks
+### Common Development Tasks
 
 ```bash
 # compile both packages
-npm run build
+lerna run build
 
 # run the rxpress test suite
 npm test --workspace rxpress
@@ -106,6 +106,9 @@ npm test --workspace rxpress
 # lint all sources
 npm run lint
 
-# start the observability stack (Jaeger + Prometheus + Grafana)
-docker compose up -d
+# auto-fix lint (all sources)
+npm run lint:fix
+
+# start the observability stack (Jaeger + Prometheus + Grafana + SwaggerUI)
+docker compose -f docker/docker-compose.yml up -d
 ```
