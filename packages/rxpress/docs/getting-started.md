@@ -58,8 +58,8 @@ export const kv: KVBase = {
 ```ts
 import { rxpress } from 'rxpress';
 import type { RPCConfig, EventConfig } from 'rxpress';
-import { logger } from './adapters/logger.js';
-import { kv } from './adapters/kv.js';
+import { logger } from './adapters/logger.js'; // OR use 'simple-logger.service.js' for a quick start
+import { kv } from './adapters/kv.js'; // OR use 'memory-kv.service.js'
 
 const routes: RPCConfig[] = [
   {
@@ -95,7 +95,7 @@ rxpress.init({
 rxpress.addHandlers(routes);
 rxpress.addEvents(events);
 
-await rxpress.start({ port: 3000 });
+rxpress.start().catch(logger.error);
 ```
 
 See the next section for optional security middleware (Helmet, cookie-session) that keeps the server stateless while adding HTTP header protections and encrypted sessions.
