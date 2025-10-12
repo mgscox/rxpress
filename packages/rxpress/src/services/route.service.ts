@@ -150,8 +150,8 @@ export namespace RouteService {
     })
   }
 
-  async function runHandler(param: { req: rxRequest; res: Response; route: RPCConfig; logger: Logger; kv: KVBase }) {
-    const { req, res, route, logger, kv } = param;
+  async function runHandler(param: { req: rxRequest; res: Response; route: RPCConfig; logger: Logger; kv: KVBase; span?: Span }) {
+    const { req, res, route, logger, kv, span } = param;
     const attributes: Record<string, string | number> = {
       method: route.method,
       type: route.type,
@@ -166,11 +166,12 @@ export namespace RouteService {
     const sseService: SSEService = new SSEService(req, res);
 
     const handlerContext = {
-      emit: (param) => EventService.emit({ ...param, run }),
+      emit: (param) => EventService.emit({ ...param, run, traceContext: span?.spanContext() }),
       kv,
       kvPath,
       logger,
       run,
+      span,
     } as HandlerContext<typeof route.type>;
 
     try {
@@ -458,7 +459,7 @@ export namespace RouteService {
             res.once("close", onFinish);
 
             try {
-              await runHandler({ req, res, route, logger, kv });
+              await runHandler({ req, res, route, logger, kv, span });
             } 
             catch (error) {
               // Record exception as an event and set status

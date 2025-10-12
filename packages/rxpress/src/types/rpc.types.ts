@@ -3,6 +3,7 @@ import { ZodSchema } from 'zod';
 import { NextFunction, Request, Response } from 'express';
 import type { SendFileOptions } from 'express-serve-static-core';
 import type { ZodType } from 'zod';
+import type { Span } from '@opentelemetry/api';
 
 import { KVBase, KVPath } from './kv.types.js';
 import { Logger } from './logger.types.js';
@@ -34,6 +35,7 @@ type HandlerContextBase = {
   logger: Logger;
   run: RunContext;
   stream?: RPCSSEStream;
+  span?: Span;
 };
 
 export type HandlerContext<T extends RPCTypes = RPCTypes> = HandlerContextBase & (T extends 'sse'
@@ -91,6 +93,8 @@ export type EventContext = {
 };
 export type EventFunction<T = unknown> = (input: T, ctx: EventContext) => MaybePromise<void>;
 type EventConfigBase<T> = {
+  name?: string;
+  description?: string;
   subscribe: string[];
   emits?: string[];
   handler: EventFunction<T>;

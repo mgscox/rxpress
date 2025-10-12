@@ -16,6 +16,8 @@ export type CronRetryConfig = {
 };
 
 export type CronConfig = {
+  name?: string;
+  description?: string;
   cronTime: string;
   timeZone?: string;
   handler: CronHandler;

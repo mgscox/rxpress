@@ -9,6 +9,8 @@ const tests = [
   './rxpress.next.test.ts',
   './rxpress.documentation.test.ts',
   './rxpress.run-context.test.ts',
+  './rxpress.validate-events.test.ts',
+  './rxpress.workbench.test.ts',
   './readme-example.test.ts',
 ];
 

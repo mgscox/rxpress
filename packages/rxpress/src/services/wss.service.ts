@@ -2,6 +2,7 @@ import ws, { WebSocketServer } from "ws";
 import http from 'node:http';
 import { EventService } from "./event.service.js";
 import { BufferLike } from "../types/index.js";
+import { TopologyService } from './topology.service.js';
 
 export namespace WSSService {
   let wss: WebSocketServer | null = null;
@@ -10,9 +11,11 @@ export namespace WSSService {
     wss = new WebSocketServer({ server, path }); 
     wss.on('listening', () => {
       EventService.emit({topic: 'SYS::WSS::START', data: {}});
+      TopologyService.registerEmit('SYS::WSS::START', 'internal:wss');
     })
     wss.on('connection', (ws, req) => {
       EventService.emit({topic: 'SYS::WSS::CONNECTION', data: { ws, req }});
+      TopologyService.registerEmit('SYS::WSS::CONNECTION', 'internal:wss');
       const pingInterval = setInterval(
         () => ws.ping(), 
         30_000
@@ -25,10 +28,13 @@ export namespace WSSService {
         
         try {
           EventService.emit({topic: 'SYS::WSS::MESSAGE', data: {ws, data, req}});
+          TopologyService.registerEmit('SYS::WSS::MESSAGE', 'internal:wss');
           const json = JSON.parse(Buffer.from(`${data}`).toString());
 
           if (json.path) {
-            EventService.emit({topic: `SYS::WSS::ROUTE::${json.path}`, data: {ws, data, req}});
+            const topic = `SYS::WSS::ROUTE::${json.path}`;
+            EventService.emit({topic, data: {ws, data, req}});
+            TopologyService.registerEmit(topic, 'internal:wss');
           }
         }
         catch { /* Payload was not JSON */ }
@@ -36,6 +42,7 @@ export namespace WSSService {
       ws.on('close', () => {
         clearInterval(pingInterval);
         EventService.emit({topic: 'SYS::WSS::CLOSE', data: {}});
+        TopologyService.registerEmit('SYS::WSS::CLOSE', 'internal:wss');
       })
     });        
   }

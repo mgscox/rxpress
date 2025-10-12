@@ -57,7 +57,6 @@ await (async () => {
     middleware: [],
     responseSchema: z.object({ message: z.string() }),
     handler: async (_req, ctx) => {
-      assert.ok(ctx.stream, 'SSE context stream should be defined');
       ctx.stream.send({ message: 'hello' });
     },
   };

@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Graphviz URL Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body,#app{max-height:100vh; margin: 0; height: 100%} 
+    #app{max-width: 100vw; overflow: auto; margin-top: 1rem}
+    #status{position: absolute; top: 0; left: 0; z-index: 999; color: #333; height: 1rem; width: 100%; }
+  </style>
+  <script src="https://unpkg.com/viz.js@2.1.2/viz.js"></script>
+  <script src="https://unpkg.com/viz.js@2.1.2/full.render.js"></script>
+</head>
+<body>
+    <div id="status">Loading…</div>
+    <div id="app"></div>
+    <script>
+        console.log(`Loading...`);
+        (async () => {
+            const params = new URLSearchParams(location.search);
+            const srcParam = params.get("src");
+            let resolved;
+            if (srcParam) {
+                try {
+                    resolved = new URL(srcParam);
+                } 
+                catch {
+                    resolved = new URL(srcParam, location.href);
+                }
+            } 
+            else {
+             resolved = new URL('/topology.dot', location.href);
+            }
+
+            if (resolved.origin !== location.origin) {
+                console.warn('Rewriting cross-origin topology URL to current origin for browser compatibility');
+                resolved.protocol = location.protocol;
+                resolved.host = location.host;
+            }
+
+            const src = resolved.href;
+            const intervalMs = +(params.get("refresh_ms") || 5000);
+            console.log({src, intervalMs});
+
+            const viz = new Viz();
+            async function render() {
+                document.getElementById('status').innerHTML = (new Date()).toLocaleString()
+                try {
+                    const dot = await (await fetch(src, {cache: "no-store"})).text();
+                    const svg = await viz.renderString(dot);
+                    document.getElementById('app').innerHTML = svg;
+                } 
+                catch (e) {
+                    document.getElementById('app').textContent = "Render error: " + e;
+                    console.error(e);
+                }
+            }
+            await render();
+            setInterval(render, intervalMs);
+        })();
+    </script>
+</body>
+</html>

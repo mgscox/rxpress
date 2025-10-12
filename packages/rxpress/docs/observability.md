@@ -38,7 +38,7 @@ metrics: {
 }
 ```
 
-Example spans include route names (e.g. `get::/api/v1/example`) and status codes.
+Example spans include route names (e.g. `GET /api/v1/example`) and status codes. When routes emit events, the handler spans link back to the originating request via OpenTelemetry span links, giving backends such as Jaeger or Tempo enough context to render a dependency graph from HTTP → events → cron jobs.
 
 ## Logging Integration
 
@@ -63,3 +63,19 @@ open http://localhost:16686  # Jaeger UI
 ```
 
 The compose file is illustrative—you can adapt the collector configuration (`otel/collector-config.yaml`) to match your own infrastructure, or replace components if you already operate a telemetry platform.
+
+## Topology Workbench
+
+Set the optional `workbench.path` configuration to expose a Graphviz DOT representation of the current routes, events, topics, and cron jobs:
+
+```ts
+rxpress.init({
+  config: {
+    workbench: { path: '/topology.dot' },
+  },
+  logger,
+  kv,
+});
+```
+
+The endpoint responds with `text/vnd.graphviz`, making it easy to feed into Graphviz, Mermaid, or any tooling that understands DOT. Edges connect emitters to topics and topics to subscribers; system events prefixed with `SYS::` are included for completeness but excluded from validation.

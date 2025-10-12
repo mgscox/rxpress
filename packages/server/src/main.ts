@@ -1,9 +1,11 @@
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { AddressInfo } from 'node:net';
 import * as z from 'zod';
 import { rxpress, ConfigService, helpers } from 'rxpress';
 import type { RPCConfig, EventConfig, Request } from 'rxpress';
 import { DiagLogLevel } from '@opentelemetry/api';
+import { existsSync, readFileSync } from 'node:fs';
+import cors from 'cors';
 
 const ExampleEventSchema = z.object({
   status: z.string(),
@@ -11,9 +13,12 @@ const ExampleEventSchema = z.object({
 });
 type ExampleEventType = z.infer<typeof ExampleEventSchema>;
 
+const workbenchPath = '/topology.dot';
 const routes: RPCConfig[] = [
   {
     type: 'api',
+    name: 'API example',
+    description: 'Example API handler',
     method: 'GET',
     path: '/api/v1/example',
     middleware: [],
@@ -43,6 +48,8 @@ const routes: RPCConfig[] = [
   },
   {
     type: 'http',
+    name: 'HTTP example',
+    description: 'Example web route handler',
     method: 'GET',
     path: '/',
     middleware: [],
@@ -65,10 +72,31 @@ const routes: RPCConfig[] = [
       emit({ topic: 'another-emit', data: hanlderResult });
       return hanlderResult;
     },
+  },
+  {
+    type: 'http',
+    name: 'Graphviz',
+    description: 'Web handler for event vizualisation',
+    method: 'GET',
+    path: '/graphviz',
+    middleware: [],
+    emits: [],
+    handler: async () => {
+      const file = resolve(`public/graphviz.html`);
+
+      if (!existsSync(file)) {
+        return {status: 404, body: `File not found: ${file}`};
+      }
+
+      const handlerResult = { status: 200, body: readFileSync(file, {encoding: 'utf-8'}), mime: 'text/html' };
+      return handlerResult;
+    },
   }
 ];
 
 const inlineEvent: EventConfig<ExampleEventType> = {
+  name: 'Another emit handler',
+  description: 'Example event handler',
   subscribe: ['another-emit'],
   strict: true,
   schema: ExampleEventSchema,
@@ -108,19 +136,17 @@ async function main() {
         path: '/openapi.json',
         description: 'Public endpoints exposed by the Example service',
       },
-      helmet: {
-        xContentTypeOptions: false,
-      },
       session: {
         secret: 's3Cur3',
         name: 'sessionId',
         maxAge: 24 * 60 * 60 * 1000,
-      }
+      },
+      workbench: { path: workbenchPath }
     },
     logger: helpers.simplelLogger,
     kv: helpers.createMemoryKv('example_server', false),
   });
-
+  rxpress.use( cors() );
   rxpress.addEvents(inlineEvent);
   await rxpress.load({ eventDir: join(__dirname, 'events') });
   rxpress.addHandlers(routes);

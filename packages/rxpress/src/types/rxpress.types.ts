@@ -25,7 +25,10 @@ export type RxpressConfig = {
   staticRoutDir?: string;
   documentation?: DocumentationConfig;
   helmet?: HelmetOptions;
-  session?: CookieSessionOptions
+  session?: CookieSessionOptions;
+  workbench?: {
+    path: string;
+  };
 };
 export type RxpressStartConfig = {
   eventDir?: string;

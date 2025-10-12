@@ -1,4 +1,4 @@
-import express, { type Application, type RequestHandler } from 'express';
+import express, { type RequestHandler, type ErrorRequestHandler } from 'express';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { globSync } from 'glob';
@@ -25,8 +25,8 @@ import { ConfigService } from './services/config.service.js';
 import { WSSService } from './services/wss.service.js';
 import { NextService } from './services/next.service.js';
 import { DocumentationService } from './services/documentation.service.js';
+import { TopologyService } from './services/topology.service.js';
 
-type UseParams = Parameters<Application['use']>;
 const createHelmetMiddleware = helmet as unknown as (options?: HelmetOptions) => RequestHandler;
 
 export namespace rxpress {
@@ -37,58 +37,14 @@ export namespace rxpress {
   let activeConfig: RxpressConfig | null = null;
   let hostname = '0.0.0.0';
   let nextReady: Promise<void> | undefined;
-  const emitTopics = new Map<string, Set<string>>();
-  const handlerTopics = new Map<string, Set<string>>();
+  let inlineRouteCounter = 0;
+  let inlineEventCounter = 0;
+  let inlineCronCounter = 0;
 
   const ensureInitialized = () => {
     if (!app || !activeLogger || !activeKv || !activeConfig) {
       throw new Error('rxpress.init() must be called before invoking this function.');
     }
-  };
-
-  const registerEmit = (topic: string, source: string) => {
-    const entry = emitTopics.get(topic) ?? new Set<string>();
-    entry.add(source);
-    emitTopics.set(topic, entry);
-  };
-
-  const registerSubscription = (topic: string, source: string) => {
-    const entry = handlerTopics.get(topic) ?? new Set<string>();
-    entry.add(source);
-    handlerTopics.set(topic, entry);
-  };
-
-  const trackRoute = (route: RPCConfig, origin: string) => {
-    if (route.emits) {
-      for (const topic of route.emits) {
-        registerEmit(topic, origin);
-      }
-    }
-  };
-
-  const trackEvent = <T>(event: EventConfig<T>, origin: string) => {
-    for (const topic of event.subscribe) {
-      registerSubscription(topic, origin);
-    }
-
-    if (event.emits) {
-      for (const topic of event.emits) {
-        registerEmit(topic, `${origin}::emit`);
-      }
-    }
-  };
-
-  const trackCron = (cron: CronConfig, origin: string) => {
-    if (cron.emits) {
-      for (const topic of cron.emits) {
-        registerEmit(topic, origin);
-      }
-    }
-  };
-
-  const resetTracking = () => {
-    emitTopics.clear();
-    handlerTopics.clear();
   };
 
   export function init(param: { config: RxpressConfig; logger: Logger; kv: KVBase }): void {
@@ -98,7 +54,7 @@ export namespace rxpress {
     activeLogger = logger;
     activeKv = kv;
     hostname = config.hostname || hostname;
-    resetTracking();
+    TopologyService.clear();
 
     if (config.rootDir) {
       ConfigService.setRootDir(config.rootDir);
@@ -139,11 +95,21 @@ export namespace rxpress {
 
       app.use(session(cconfig));
     }
+
+    if (config.workbench?.path) {
+      app.get(config.workbench.path, (_req, res) => {
+        res.type('text/vnd.graphviz');
+        res.send(TopologyService.generateDot());
+      });
+    }
   }
 
-  export function use(...args: UseParams): void {
+  export function use(handler: RequestHandler | ErrorRequestHandler): void;
+  export function use(path: string | RegExp | Array<string | RegExp>, ...handlers: Array<RequestHandler | ErrorRequestHandler>): void;
+
+  export function use(...args: unknown[]): void {
     ensureInitialized();
-    app!.use(...args);
+    (app!.use as unknown as (...params: unknown[]) => express.Express).apply(app, args);
   }
 
   export function createServer(port = 3000): Promise<{ server: http.Server; port: number }> {
@@ -164,7 +130,7 @@ export namespace rxpress {
           });
           WSSService.createWs(server, activeConfig?.wsPath);
           server.listen(listenPort, hostname);
-          EventService.add({
+          const wssBroadcastEvent: EventConfig = {
             subscribe: ['SYS::WSS::BROADCAST'],
             handler: async (input: unknown) => {
               const payload = (input === typeof 'BufferLike')
@@ -172,12 +138,14 @@ export namespace rxpress {
                 : JSON.stringify(input);
               WSSService.broadcast(payload);
             },
-          }, {
+          };
+
+          TopologyService.registerEvent(wssBroadcastEvent, 'internal:wss-broadcast');
+          EventService.add(wssBroadcastEvent, {
             logger: activeLogger!,
             kv: activeKv!,
             emit: EventService.emit,
           });
-          registerSubscription('SYS::WSS::BROADCAST', 'internal:wss-broadcast');
         }
         catch (error) {
           reject(error);
@@ -194,7 +162,7 @@ export namespace rxpress {
     const config = module.config || module.default;
 
     if (config) {
-      trackEvent(config, `event:${file}`);
+      TopologyService.registerEvent(config, `event:${file}`);
       EventService.add(config, { logger: activeLogger!, kv: activeKv!, emit: EventService.emit });
     } 
     else {
@@ -209,7 +177,7 @@ export namespace rxpress {
 
     if (route) {
       const label = route.name ?? `${route.method} ${route.path}`;
-      trackRoute(route, `route:${label}`);
+      TopologyService.registerRoute(route, `route:${label}`);
       const router = RouteService.addHandler(route, activeLogger!, activeKv!);
       app!.use(router);
     } 
@@ -227,7 +195,7 @@ export namespace rxpress {
       const entries = Array.isArray(config) ? config : [config];
       entries.forEach((cron, index) => {
         const label = cron.handler.name || `cron#${index}`;
-        trackCron(cron, `cron:${label}`);
+        TopologyService.registerCron(cron, `cron:${label}`);
       });
       CronService.add(config, { logger: activeLogger!, kv: activeKv! });
     } 
@@ -246,7 +214,8 @@ export namespace rxpress {
     const entries = Array.isArray(events) ? events : [events];
 
     for (const event of entries) {
-      trackEvent(event, 'inline-event');
+      const id = `inline-event:${event.name || (`Inline Event ${inlineEventCounter += 1}`)}`;
+      TopologyService.registerEvent(event, id);
       EventService.add(event, { logger: activeLogger!, kv: activeKv!, emit: EventService.emit });
     }
   }
@@ -262,7 +231,8 @@ export namespace rxpress {
 
     for (const handler of entries) {
       const label = handler.name ?? `${handler.method} ${handler.path}`;
-      trackRoute(handler, `inline-route:${label}`);
+      const id = `inline-route:${inlineRouteCounter += 1}:${label}`;
+      TopologyService.registerRoute(handler, id);
       const router = RouteService.addHandler(handler, activeLogger!, activeKv!);
       app!.use(router);
     }
@@ -277,11 +247,11 @@ export namespace rxpress {
     ensureInitialized();
     const entries = Array.isArray(crons) ? crons : [crons];
 
-    for (const cron of entries) {
-      const label = cron.handler.name ?? 'inline-cron';
-      trackCron(cron, `inline-cron:${label}`);
+    entries.forEach((cron) => {
+      const label = cron.handler.name ?? `inline-cron#${inlineCronCounter += 1}`;
+      TopologyService.registerCron(cron, `inline-cron:${label}`);
       CronService.add(cron, { logger: activeLogger!, kv: activeKv! });
-    }
+    });
   }
 
   export async function load(param: { eventDir?: string; handlerDir?: string; cronDir?: string }) {
@@ -305,28 +275,7 @@ export namespace rxpress {
     await load(param);
 
     if (validateEvents) {
-      const missingHandlers: Array<{ topic: string; sources: string[] }> = [];
-      const unusedHandlers: Array<{ topic: string; sources: string[] }> = [];
-
-      for (const [topic, sources] of emitTopics.entries()) {
-        if (topic.startsWith('SYS::')) {
-          continue;
-        }
-
-        if (!handlerTopics.has(topic)) {
-          missingHandlers.push({ topic, sources: [...sources] });
-        }
-      }
-
-      for (const [topic, sources] of handlerTopics.entries()) {
-        if (topic.startsWith('SYS::')) {
-          continue;
-        }
-
-        if (!emitTopics.has(topic)) {
-          unusedHandlers.push({ topic, sources: [...sources] });
-        }
-      }
+      const { missingHandlers, unusedHandlers } = TopologyService.validateTopology(['SYS::']);
 
       if (missingHandlers.length || unusedHandlers.length) {
         const details: string[] = [];
