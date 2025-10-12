@@ -84,6 +84,7 @@ rxpress.init({
   config: {
     port: 3000,
     loadEnv: true,
+    helmet: {},
     metrics: {
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
     },
@@ -97,6 +98,8 @@ rxpress.addEvents(events);
 
 await rxpress.start({ port: 3000 });
 ```
+
+Set `helmet: {}` to enable the Helmet middleware with its defaults, or pass bespoke options from the [Helmet configuration object](https://helmetjs.github.io/) if you need to adjust security headers. See `packages/server/src/main.ts` for a working example in the sample application.
 
 ## Auto-loading by Convention
 

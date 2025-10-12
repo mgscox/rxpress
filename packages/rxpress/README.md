@@ -45,6 +45,7 @@ rxpress.init({
   config: {
     port: 3000,
     loadEnv: true,
+    helmet: {},
     metrics: {
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
     },
@@ -57,6 +58,8 @@ rxpress.addHandlers(routes);
 rxpress.addEvents(events);
 await rxpress.start({ port: 3000 });
 ```
+
+Passing `helmet: {}` enables Express Helmet with its safe defaults; provide specific [Helmet options](https://helmetjs.github.io/) if you need to tune CSP or other headers. The example server in `packages/server/src/main.ts` demonstrates enabling Helmet alongside other middleware.
 
 ## Documentation
 

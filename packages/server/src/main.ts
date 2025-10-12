@@ -103,6 +103,9 @@ async function main() {
         path: '/openapi.json',
         description: 'Public endpoints exposed by the Example service',
       },
+      helmet: {
+        xContentTypeOptions: false,
+      }
     },
     logger: helpers.simplelLogger,
     kv: helpers.createMemoryKv('example_server', false),

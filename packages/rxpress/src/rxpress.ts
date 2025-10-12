@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { globSync } from 'glob';
+import helmet from 'helmet';
 
 import {
   CronConfig,
@@ -70,6 +71,10 @@ export namespace rxpress {
       : app.disable('x-powered-by');
     DocumentationService.attach(app);
     app.use(express.json(config.json));
+    
+    if (config.helmet) {
+      app.use(helmet(config.helmet))
+    }
   }
 
   export function createServer(port = 3000): Promise<{ server: http.Server; port: number }> {

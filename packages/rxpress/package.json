@@ -34,6 +34,7 @@
   },
   "homepage": "https://github.com/mgscox/newintel#readme",
   "devDependencies": {
+    "@types/helmet": "^0.0.48",
     "@types/ws": "^8.18.1",
     "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
@@ -63,6 +64,7 @@
     "cron": "^4.3.3",
     "express": "^5.1.0",
     "glob": "^10.4.5",
+    "helmet": "^7.2.0",
     "next": "latest",
     "rxjs": "^7.8.2",
     "ws": "^8.17.1",
