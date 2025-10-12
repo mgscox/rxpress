@@ -293,7 +293,7 @@ export namespace DocumentationService {
       return;
     }
 
-    if (route.type === 'cron' || route.type === 'sse') {
+    if (route.type === 'sse') {
       return;
     }
 

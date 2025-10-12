@@ -39,16 +39,16 @@ const sseRoute: RPCConfig = {
   handler: async (_req, { stream }) => {
     let counter = 0;
     const interval = setInterval(() => {
-      stream?.send({ count: counter++ });
+      stream.send({ count: counter++ });
     }, 1000);
 
     // Clean up when the client disconnects
-    stream?.error = () => clearInterval(interval);
+    stream.error = () => clearInterval(interval);
   },
 };
 ```
 
-SSE routes automatically set headers, keep the connection alive, and close gracefully when the client disconnects or you call `rxpress.stop()`.
+Handlers declared with `type: 'sse'` always receive a concrete `stream`; other route types see it undefined. SSE routes automatically set headers, keep the connection alive, and close gracefully when the client disconnects or you call `rxpress.stop()`.
 
 ## Metrics & Tracing
 

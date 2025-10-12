@@ -5,7 +5,7 @@ import { performance } from 'node:perf_hooks';
 import { Counter, Histogram, SpanStatusCode } from '@opentelemetry/api';
 import type { Span } from '@opentelemetry/api';
 
-import { HandlerContext, RequestHandlerMiddleware, RequestMiddleware, RPCConfig, RPCContext, RPCHttpResult, RPCResult, RPCSSEStream, SSESendOptions, rxRequest, RPCConfigSatic, RPCConfigHanlder } from '../types/rpc.types.js';
+import { HandlerContext, RequestHandlerMiddleware, RequestMiddleware, RPCConfig, RPCContext, RPCHttpResult, RPCResult, RPCSSEStream, SSESendOptions, rxRequest } from '../types/rpc.types.js';
 import { EventService } from './event.service.js';
 import { Logger } from '../types/logger.types.js';
 import { KVBase } from '../types/kv.types.js';
@@ -104,7 +104,6 @@ export namespace RouteService {
           res.status(code || 422);
           res.send(payload);
           return true;
-        case 'cron':
         case 'sse':
         default:
           return false;
@@ -164,16 +163,15 @@ export namespace RouteService {
     let result: RPCResult | undefined;
     let handlerError: unknown;
     let sseSchema: z.ZodTypeAny | undefined;
-    let stream: undefined | RPCSSEStream = undefined;
     const sseService: SSEService = new SSEService(req, res);
 
-    const handlerContext: HandlerContext = {
+    const handlerContext = {
       emit: (param) => EventService.emit({ ...param, run }),
       kv,
       kvPath,
       logger,
       run,
-    };
+    } as HandlerContext<typeof route.type>;
 
     try {
       if (route.bodySchema) {
@@ -214,17 +212,16 @@ export namespace RouteService {
 
       if (route.type === 'sse') {
         sseService.sendSSEHeaders();
-        stream = {
+        const stream: RPCSSEStream = {
           send: (payload: unknown, options?: SSESendOptions) => sseService.emitSsePayload(sseSchema, payload, options),
           error:  (payload: unknown, options?: SSESendOptions) => sseService.emitSseError(payload, options),
-        }
+        };
+        (handlerContext as HandlerContext<'sse'>).stream = stream;
       }
 
-      handlerContext.stream = stream;
-
       try {
-        if ((route as RPCConfigSatic).staticRoute) {
-          const {staticRoute} = route as RPCConfigSatic;
+        if ('staticRoute' in route) {
+          const { staticRoute } = route;
           result = await new Promise<RPCResult>((resolve) => {
             const options = {
               root: staticRoutDir,
@@ -232,10 +229,7 @@ export namespace RouteService {
             };
             res.sendFile(staticRoute.filename, options, (err) => {
               if (err) {
-                const notFoundResult = route.type === 'api'
-                  ? { status: 404, body: { error: 'Resource not found' } }
-                  : { status: 404, body: 'Resource not found' };
-                resolve(notFoundResult as RPCResult);
+                resolve({ status: 404, body: 'Resource not found' });
               }
               else {
                 res.end();  // close response so later logic knows not send further response
@@ -244,8 +238,19 @@ export namespace RouteService {
             })
           })
         }
+        else if ('handler' in route) {
+          if (route.type === 'sse') {
+            result = await route.handler(req, handlerContext as HandlerContext<'sse'>) as RPCResult | undefined;
+          }
+          else if (route.type === 'api') {
+            result = await route.handler(req, handlerContext as HandlerContext<'api'>) as RPCResult | undefined;
+          }
+          else {
+            result = await route.handler(req, handlerContext as HandlerContext<'http'>) as RPCResult | undefined;
+          }
+        }
         else {
-          result = await (route as RPCConfigHanlder).handler(req, handlerContext) as RPCResult | undefined;
+          throw new Error('Route is missing a handler');
         }
       }
       catch (error) {
@@ -310,7 +315,6 @@ export namespace RouteService {
 
           case 'sse':
             throw `SSE - condition should never occur`;
-          case 'cron':
           default:
             break;
         }
