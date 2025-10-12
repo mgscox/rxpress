@@ -65,6 +65,9 @@ export namespace rxpress {
 
     RouteService.start({ staticRoutDir: config.staticRoutDir });
     app = express();
+    const _ = config.servername 
+      ? app.set('x-powered-by', config.servername) 
+      : app.disable('x-powered-by');
     DocumentationService.attach(app);
     app.use(express.json(config.json));
   }

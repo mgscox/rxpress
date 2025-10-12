@@ -9,6 +9,7 @@ type JsonOptions = Parameters<typeof json>[0];
 export type RxpressConfig = {
   port?: number;
   hostname?: string;
+  servername?: string;
   loadEnv?: boolean;
   envFiles?: string[];
   rootDir?: string;
