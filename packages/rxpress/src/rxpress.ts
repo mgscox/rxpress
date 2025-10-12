@@ -3,6 +3,7 @@ import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { globSync } from 'glob';
 import helmet from 'helmet';
+import session from 'cookie-session';
 
 import {
   CronConfig,
@@ -71,9 +72,19 @@ export namespace rxpress {
       : app.disable('x-powered-by');
     DocumentationService.attach(app);
     app.use(express.json(config.json));
-    
+
     if (config.helmet) {
       app.use(helmet(config.helmet))
+    }
+
+    if (config.session) {
+      const cconfig = config.session;
+      
+      if (!cconfig.secret && !cconfig.keys) {
+        activeLogger.warn(`[rxpress] cookies not protected against tampering (set "secret" or "keys")`)
+      }
+
+      app.use(session(cconfig));
     }
   }
 

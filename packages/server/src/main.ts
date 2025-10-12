@@ -105,6 +105,11 @@ async function main() {
       },
       helmet: {
         xContentTypeOptions: false,
+      },
+      session: {
+        secret: 's3Cur3',
+        name: 'sessionId',
+        maxAge: 24 * 60 * 60 * 1000,
       }
     },
     logger: helpers.simplelLogger,

@@ -5,6 +5,7 @@ Reactive orchestration layer that pairs Express with RxJS to manage HTTP routes,
 - 🚀 **Event-first architecture** – every handler receives an emitter, making side-effects simple and testable.
 - 🧭 **Declarative routing** – JSON APIs, HTML routes, static files, SSE, and cron jobs all share the same configuration model.
 - 🔌 **Bring-your-own adapters** – plug in any logger or key/value store (Redis, DynamoDB, in-memory, …).
+- 🍪 **Stateless sessions** – opt into encrypted cookie sessions without persisting state server-side.
 - 📈 **Observability included** – OpenTelemetry metrics + traces ready for Prometheus, Jaeger, or Tempo.
 - ⚡ **Next.js ready** – serve pages and APIs from one process without extra glue code.
 
@@ -45,7 +46,6 @@ rxpress.init({
   config: {
     port: 3000,
     loadEnv: true,
-    helmet: {},
     metrics: {
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
     },
@@ -59,7 +59,7 @@ rxpress.addEvents(events);
 await rxpress.start({ port: 3000 });
 ```
 
-Passing `helmet: {}` enables Express Helmet with its safe defaults; provide specific [Helmet options](https://helmetjs.github.io/) if you need to tune CSP or other headers. The example server in `packages/server/src/main.ts` demonstrates enabling Helmet alongside other middleware.
+Optional middleware such as Helmet or encrypted cookie sessions (`cookie-session`) are covered in [Getting Started](./docs/getting-started.md) along with the example server in `packages/server/src/main.ts`.
 
 ## Documentation
 

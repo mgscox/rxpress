@@ -84,7 +84,6 @@ rxpress.init({
   config: {
     port: 3000,
     loadEnv: true,
-    helmet: {},
     metrics: {
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
     },
@@ -99,7 +98,29 @@ rxpress.addEvents(events);
 await rxpress.start({ port: 3000 });
 ```
 
-Set `helmet: {}` to enable the Helmet middleware with its defaults, or pass bespoke options from the [Helmet configuration object](https://helmetjs.github.io/) if you need to adjust security headers. See `packages/server/src/main.ts` for a working example in the sample application.
+See the next section for optional security middleware (Helmet, cookie-session) that keeps the server stateless while adding HTTP header protections and encrypted sessions.
+
+## Optional Security Middleware
+
+`rxpress` keeps middleware opt-in so you can start small. To enable [Helmet](https://helmetjs.github.io/) with its defaults and add encrypted cookie sessions via [`cookie-session`](https://github.com/expressjs/cookie-session), provide the `helmet` and `session` blocks during `init`:
+
+```ts
+rxpress.init({
+  config: {
+    port: 3000,
+    helmet: {},
+    session: {
+      name: 'sessionId',
+      secret: process.env.SESSION_SECRET ?? 'replace-me',
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  },
+  logger,
+  kv,
+});
+```
+
+The example server (`packages/server/src/main.ts`) demonstrates combining these with telemetry and other options.
 
 ## Auto-loading by Convention
 

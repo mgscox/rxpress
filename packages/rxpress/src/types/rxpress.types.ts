@@ -1,5 +1,6 @@
 import type { json } from 'express';
 import type { HelmetOptions as HelmetLibraryOptions } from 'helmet';
+import cookieSession from 'cookie-session';
 
 import type { MetricsConfig } from './metrics.types.js';
 import type { NextAdapterConfig } from './next.types.js';
@@ -22,5 +23,6 @@ export type RxpressConfig = {
   next?: NextAdapterConfig;
   staticRoutDir?: string;
   documentation?: DocumentationConfig;
-  helmet?: HelmetOptions
+  helmet?: HelmetOptions;
+  session?: cookieSession.CookieSessionOptions
 };
