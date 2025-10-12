@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Application, type RequestHandler } from 'express';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { globSync } from 'glob';
@@ -13,6 +13,7 @@ import {
   Logger,
   KVBase,
   BufferLike,
+  HelmetOptions,
 } from './types/index.js';
 
 import { EventService } from './services/event.service.js';
@@ -23,6 +24,9 @@ import { ConfigService } from './services/config.service.js';
 import { WSSService } from './services/wss.service.js';
 import { NextService } from './services/next.service.js';
 import { DocumentationService } from './services/documentation.service.js';
+
+type UseParams = Parameters<Application['use']>;
+const createHelmetMiddleware = helmet as unknown as (options?: HelmetOptions) => RequestHandler;
 
 export namespace rxpress {
   let app: express.Express | null = null;
@@ -74,7 +78,7 @@ export namespace rxpress {
     app.use(express.json(config.json));
 
     if (config.helmet) {
-      app.use(helmet(config.helmet))
+      app.use(createHelmetMiddleware(config.helmet));
     }
 
     if (config.session) {
@@ -86,6 +90,11 @@ export namespace rxpress {
 
       app.use(session(cconfig));
     }
+  }
+
+  export function use(...args: UseParams): void {
+    ensureInitialized();
+    app!.use(...args);
   }
 
   export function createServer(port = 3000): Promise<{ server: http.Server; port: number }> {

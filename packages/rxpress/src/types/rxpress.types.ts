@@ -9,6 +9,7 @@ import type { DocumentationConfig } from './documentation.types.js';
 type JsonOptions = Parameters<typeof json>[0];
 
 export type HelmetOptions = HelmetLibraryOptions;
+export type CookieSessionOptions = Parameters<typeof cookieSession>[0];
 export type RxpressConfig = {
   port?: number;
   hostname?: string;
@@ -24,5 +25,5 @@ export type RxpressConfig = {
   staticRoutDir?: string;
   documentation?: DocumentationConfig;
   helmet?: HelmetOptions;
-  session?: cookieSession.CookieSessionOptions
+  session?: CookieSessionOptions
 };

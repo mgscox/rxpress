@@ -59,7 +59,7 @@ rxpress.addEvents(events);
 await rxpress.start({ port: 3000 });
 ```
 
-Optional middleware such as Helmet or encrypted cookie sessions (`cookie-session`) are covered in [Getting Started](./docs/getting-started.md) along with the example server in `packages/server/src/main.ts`.
+Optional middleware such as Helmet, cookie-based sessions, compression, or CORS can be wired in with `rxpress.use(...)`; the [Getting Started guide](./docs/getting-started.md) shows both global and per-route patterns alongside the example server in `packages/server/src/main.ts`.
 
 ## Documentation
 

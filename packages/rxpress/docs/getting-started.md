@@ -122,6 +122,51 @@ rxpress.init({
 
 The example server (`packages/server/src/main.ts`) demonstrates combining these with telemetry and other options.
 
+## Request Parsers & Custom Middleware
+
+The Express app lives inside the library, but you can still install middleware in two ways.
+
+### Global middleware via `rxpress.use`
+
+We include common middleware, such as `helmet`, `session`, and `json-body-parser`, in the main library. To add additional middleware, simply call `rxpress.use` (after `rxpress.init`) to register middleware that should run for every request. This is the easiest place to plug in packages like [`compression`](https://github.com/expressjs/compression) or [`cors`](https://github.com/expressjs/cors):
+
+```ts
+import compression from 'compression';
+import cors from 'cors';
+
+rxpress.init({
+  /* ... */
+});
+
+rxpress.use(compression());
+rxpress.use(cors({ origin: 'https://app.example.com' }));
+```
+
+`rxpress.use` mirrors `express().use`, so you can also pass path-prefixed middleware (`rxpress.use('/admin', authMiddleware)`), error handlers, or arrays of handlers. Ensure you call it before `rxpress.start`.
+
+### Per-route middleware
+
+Global middleware can be computationally expensive, since it runs on every route every time. When you only need a parser or guard on a specific handler, attach it through the `middleware` array on the route definition. For example, to accept classic HTML form posts (`application/x-www-form-urlencoded`):
+
+```ts
+import express from 'express';
+import type { RPCConfig } from 'rxpress';
+
+const parseForm = express.urlencoded({ extended: false });
+
+const submitForm: RPCConfig = {
+  type: 'api',
+  method: 'POST',
+  path: '/forms/contact',
+  middleware: [parseForm],
+  handler: async (req) => {
+    return { status: 204, body: {} };
+  },
+};
+```
+
+Attach `parseForm` only where you need it, or reuse the same instance across multiple routes. Global JSON parsing is already configured via `express.json()`; adjust its options through `config.json` (for example `limit: '2mb'`) when you call `rxpress.init`.
+
 ## Auto-loading by Convention
 
 Instead of registering handlers programmatically, supply directories that contain `*.handler.js`, `*.event.js`, or `*.cron.js` files. Each module should export a `config` object compatible with the respective type.
