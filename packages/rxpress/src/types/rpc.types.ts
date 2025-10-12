@@ -2,6 +2,7 @@ import * as z from 'zod';
 import { ZodSchema } from 'zod';
 import { NextFunction, Request, Response } from 'express';
 import type { SendFileOptions } from 'express-serve-static-core';
+import type { ZodType } from 'zod';
 
 import { KVBase, KVPath } from './kv.types.js';
 import { Logger } from './logger.types.js';
@@ -78,13 +79,17 @@ export type EventContext = {
   emit: Emit;
   run?: RunContext;
 };
-export type EventFunction = <T>(input: T, ctx: EventContext) => MaybePromise<void>;
-export type EventConfig = {
+export type EventFunction<T = unknown> = (input: T, ctx: EventContext) => MaybePromise<void>;
+type EventConfigBase<T> = {
   subscribe: string[];
   emits?: string[];
-  handler: EventFunction;
+  handler: EventFunction<T>;
+  schema?: ZodType<T>;
 };
-export type Events = EventConfig[];
+
+export type EventConfig<T = unknown> =
+  | (EventConfigBase<T> & { strict?: false })
+  | (EventConfigBase<T> & { strict: true; schema: ZodType<T> });
 export type BufferLike =
     | string
     | Buffer

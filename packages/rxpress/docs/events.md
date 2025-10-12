@@ -35,12 +35,31 @@ const events: EventConfig[] = [
 ];
 ```
 
+If you need runtime validation of the payload, supply a Zod schema and the handler receives the parsed object. Additionally, if you set `strict: true` an error is logged and the event is skipped should validation fail:
+
+```ts
+import * as z from 'zod';
+
+const orderSchema = z.object({ id: z.string(), total: z.number() });
+
+const events: EventConfig<z.infer<typeof orderSchema>>[] = [
+  {
+    subscribe: ['orders::created'],
+    strict: true,
+    schema: orderSchema,
+    handler: async (order, { logger }) => {
+      logger.info('Validated order created', order);
+    },
+  },
+];
+```
+
 Event handlers receive:
 
-- `trigger`: topic name
+- `trigger`: topic name which initiated this event
 - `logger`
 - `kv` / `kvPath`: persistent storage adapters (direct key lookup + dot-path helpers)
-- `run`: run-scoped store that is cleared automatically when work completes
+- `run`: run-scoped store that is cleared automatically when flow completes
 - `emit`: emit additional events
 
 Because handlers run on RxJS observables you can fan-out, buffer, or throttle streams with custom operators if desired.
@@ -50,5 +69,6 @@ Because handlers run on RxJS observables you can fan-out, buffer, or throttle st
 - **Keep handlers idempotent.** They may be triggered from cron jobs or retries.
 - **Emit domain events, not implementation details.** For example `orders::created` rather than `sql::inserted`.
 - **Leverage adapters.** Use the provided `logger` and `kv` instances so that tests can inject in-memory substitutes.
+- **Enable strict validation for shared contracts.** Provide a Zod schema + `strict: true` to reject malformed payloads early; optional schemas without `strict` still attempt parsing but fall back to the original data on failure.
 
 See [`packages/rxpress/__tests__/rxpress.integration.test.ts`](../__tests__/rxpress.integration.test.ts) for an end-to-end example that asserts emitted events.

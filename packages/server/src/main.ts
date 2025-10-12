@@ -5,6 +5,12 @@ import { rxpress, ConfigService, helpers } from 'rxpress';
 import type { RPCConfig, EventConfig, Request } from 'rxpress';
 import { DiagLogLevel } from '@opentelemetry/api';
 
+const ExampleEventSchema = z.object({
+  status: z.string(),
+  body: z.record(z.string(), z.unknown()),
+});
+type ExampleEventType = z.infer<typeof ExampleEventSchema>;
+
 const routes: RPCConfig[] = [
   {
     type: 'api',
@@ -62,15 +68,14 @@ const routes: RPCConfig[] = [
   }
 ];
 
-const inlineEvents: EventConfig[] = [
-  {
-    subscribe: ['another-emit'],
-    handler: async (input, { logger }) => {
-      const payload = input as { status: string; body: Record<string, unknown> };
-      logger.info(`Inline configured event triggered`, payload);
-    },
+const inlineEvent: EventConfig<ExampleEventType> = {
+  subscribe: ['another-emit'],
+  strict: true,
+  schema: ExampleEventSchema,
+  handler: async (input, { logger }) => {
+    logger.info(`Inline configured event triggered`, { status: input.status, body: input.body });
   },
-];
+};
 
 async function main() {
   const port = Number.parseInt(ConfigService.env('PORT', '3002'), 10);
@@ -116,7 +121,7 @@ async function main() {
     kv: helpers.createMemoryKv('example_server', false),
   });
 
-  rxpress.addEvents(inlineEvents);
+  rxpress.addEvents(inlineEvent);
   await rxpress.load({ eventDir: join(__dirname, 'events') });
   rxpress.addHandlers(routes);
 

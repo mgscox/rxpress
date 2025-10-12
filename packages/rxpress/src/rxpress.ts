@@ -183,7 +183,7 @@ export namespace rxpress {
     await Promise.all(eventFiles.map((file) => registerEvent(file)));
   }
 
-  export function addEvents(events: EventConfig | EventConfig[]) {
+  export function addEvents<T = unknown>(events: EventConfig<T> | EventConfig<T>[]) {
     ensureInitialized();
     const entries = Array.isArray(events) ? events : [events];
 

@@ -1,6 +1,7 @@
 import { Subject } from 'rxjs';
 
-import { EventConfig, Events } from '../types/rpc.types.js';
+import { EventConfig } from '../types/rpc.types.js';
+import type { ZodType } from 'zod';
 import { KVBase } from '../types/kv.types.js';
 import { Logger } from '../types/logger.types.js';
 import { Emit } from '../types/emit.types.js';
@@ -20,8 +21,8 @@ export namespace EventService {
     events$[topic]?.next({ data, run });
   };
 
-  export const add = (
-    events: Events | EventConfig,
+  export const add = <T = unknown>(
+    events: EventConfig<T> | EventConfig<T>[],
     { logger, kv, emit }: { logger: Logger; kv: KVBase, emit: Emit },
   ) => {
     const entries = Array.isArray(events) ? events : [events];
@@ -42,7 +43,38 @@ export namespace EventService {
             }
 
             try {
-              const result = event.handler(data, {
+              let payload = data as T;
+
+              if (event.strict && !event.schema) {
+                logger.error?.('Strict event missing schema', { topic });
+                return;
+              }
+
+              if (event.schema) {
+                const schema = event.schema as ZodType<T>;
+                const parsed = schema.safeParse(data);
+
+                if (!parsed.success) {
+
+                  if (event.strict) {
+                    logger.error?.('Event payload failed strict validation', {
+                      topic,
+                      issues: parsed.error.issues,
+                    });
+                    return;
+                  }
+                  else {
+                    logger.warn?.('Event payload failed schema validation; continuing with original shape', {
+                      topic,
+                      issues: parsed.error.issues,
+                    });
+                  }
+
+                }
+
+              }
+
+              const result = event.handler(payload, {
                 trigger: topic,
                 logger,
                 kv,
