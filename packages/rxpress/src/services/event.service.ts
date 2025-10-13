@@ -11,6 +11,8 @@ import { RunContext } from '../types/run.types.js';
 import { createKVPath } from './kv-path.service.js';
 import { retainRun, releaseRun } from './run.service.js';
 import { MetricService } from './metrics.service.js';
+import { GrpcBridgeService } from './grpc.service.js';
+import type { GrpcInvokeBinding } from '../types/grpc.types.js';
 
 type EmitPayload = {
   data?: unknown;
@@ -23,6 +25,10 @@ const events$: Record<string, Subject<EmitPayload>> = {};
 export namespace EventService {
   export const emit: Emit = ({ topic, data, run, traceContext }) => {
     events$[topic]?.next({ data, run, traceContext });
+  };
+
+  const isGrpcEvent = <T>(event: EventConfig<T>): event is EventConfig<T> & { kind: 'grpc'; grpc: GrpcInvokeBinding } => {
+    return (event as Record<string, unknown>).kind === 'grpc';
   };
 
   export const add = <T = unknown>(
@@ -92,19 +98,55 @@ export namespace EventService {
                   }
                 }
 
-                const emitForHandler: Emit = (param) => emitBase({ ...param, traceContext: span.spanContext() });
+                if (isGrpcEvent(event)) {
+                  if (!GrpcBridgeService.isEnabled()) {
+                    logger.error?.('gRPC event invoked without bridge enabled', { topic, event: event.name });
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: 'gRPC bridge not initialised' });
+                    return;
+                  }
 
-                const result = event.handler(payloadValue, {
-                  trigger: topic,
-                  logger,
-                  kv,
-                  kvPath,
-                  emit: emitForHandler,
-                  run,
-                });
+                  const runId = run?.id;
+                  const meta: Record<string, unknown> = {
+                    trigger: topic,
+                    event: event.name,
+                  };
 
-                await Promise.resolve(result);
-                span.setStatus({ code: SpanStatusCode.OK });
+                  if (runId) {
+                    meta.run_id = runId;
+                  }
+
+                  const spanCtx = span.spanContext();
+                  meta.trace_id = spanCtx.traceId;
+                  meta.span_id = spanCtx.spanId;
+                  meta.trace_flags = spanCtx.traceFlags;
+
+                  await GrpcBridgeService.invoke({
+                    binding: event.grpc,
+                    method: 'event',
+                    input: {
+                      topic,
+                      payload: payloadValue,
+                      runId,
+                    },
+                    meta,
+                  });
+                  span.setStatus({ code: SpanStatusCode.OK });
+                }
+                else {
+                  const emitForHandler: Emit = (param) => emitBase({ ...param, traceContext: span.spanContext() });
+
+                  const result = event.handler(payloadValue, {
+                    trigger: topic,
+                    logger,
+                    kv,
+                    kvPath,
+                    emit: emitForHandler,
+                    run,
+                  });
+
+                  await Promise.resolve(result);
+                  span.setStatus({ code: SpanStatusCode.OK });
+                }
               }
               catch (error) {
                 logger.error?.('Event handler failed', { error: `${error}`, topic });

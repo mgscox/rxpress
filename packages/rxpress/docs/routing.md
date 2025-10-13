@@ -90,6 +90,27 @@ rxpress.addHandlers([
 
 This setup plays well with client-side routers: Angular/React/Vue handle deep links client-side, while API routes and other RPC handlers continue to run on the same Express instance. If you later adopt Next.js for server rendering, you can enable the optional `next` integration without changing your static routes.
 
+## gRPC handlers
+
+Set `kind: 'grpc'` to forward a route through the gRPC bridge. Request data is serialised (body, query, params, headers, authenticated user) and delivered to your gRPC handler, which responds with status/headers/body metadata.
+
+```ts
+rxpress.addHandlers({
+  type: 'api',
+  method: 'POST',
+  path: '/payments',
+  emits: ['payments.authorised'],
+  kind: 'grpc',
+  grpc: {
+    handlerName: 'payments-handler',
+    service: 'payments-service',
+    timeoutMs: 3_000,
+  },
+});
+```
+
+Remote handlers can call `ctx.emit`, `ctx.kv`, `ctx.log`, and interact with the current run scope just like local handlers. See [`docs/grpc.md`](./grpc.md) for handler implementation patterns and multi-language guidance.
+
 ## Documenting Routes
 
 Enable the documentation generator to publish an OpenAPI specification for every `api`/`http` route. See [API Documentation](./documentation.md) for details.

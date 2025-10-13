@@ -26,6 +26,7 @@ import { WSSService } from './services/wss.service.js';
 import { NextService } from './services/next.service.js';
 import { DocumentationService } from './services/documentation.service.js';
 import { TopologyService } from './services/topology.service.js';
+import { GrpcBridgeService } from './services/grpc.service.js';
 
 const createHelmetMiddleware = helmet as unknown as (options?: HelmetOptions) => RequestHandler;
 
@@ -65,6 +66,7 @@ export namespace rxpress {
     }
 
     DocumentationService.configure(config.documentation);
+    GrpcBridgeService.init({ config: config.grpc, logger, kv, emit: EventService.emit });
 
     if (config.metrics) {
       MetricService.start(config.metrics);
@@ -314,6 +316,7 @@ export namespace rxpress {
     await Promise.all([
       MetricService.stop(),
       NextService.stop(),
+      GrpcBridgeService.shutdown(),
     ]).catch((e) => {
       console.warn('Error during shutdown', e);
     });

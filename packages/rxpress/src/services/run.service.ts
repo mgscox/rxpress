@@ -166,3 +166,13 @@ export async function releaseRun(id: string): Promise<void> {
 }
 
 export { RUN_KEY_PREFIX };
+
+export function getRun(id: string): RunContext | undefined {
+  const record = getRecord(id);
+
+  if (!record) {
+    return undefined;
+  }
+
+  return buildContext(id);
+}

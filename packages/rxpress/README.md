@@ -5,8 +5,10 @@ Reactive orchestration layer that pairs Express with RxJS to manage HTTP routes,
 - 🚀 **Event-first architecture** – every handler receives an emitter, making side-effects simple and testable.
 - 🧭 **Declarative routing** – JSON APIs, HTML routes, static files, SSE, and cron jobs all share the same configuration model.
 - 🔌 **Bring-your-own adapters** – plug in any logger or key/value store (Redis, DynamoDB, in-memory, …).
+- 🔐 **Secure bridge** – configure TLS/mTLS, proactive health checks, and simple discovery refresh in one place.
 - 🍪 **Stateless sessions** – opt into encrypted cookie sessions without persisting state server-side.
 - 📈 **Observability included** – OpenTelemetry metrics + traces ready for Prometheus, Jaeger, or Tempo.
+- 🌉 **Polyglot via gRPC** – execute routes and events in other languages without leaving the Rxpress API.
 - ⚡ **Next.js ready** – serve pages and APIs from one process without extra glue code.
 
 ## Installation
@@ -45,10 +47,6 @@ const events: EventConfig[] = [
 rxpress.init({
   config: {
     port: 3000,
-    loadEnv: true,
-    metrics: {
-      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
-    },
   },
   logger: createSimpleLogger(),
   kv: createMemoryKv('starter'),
@@ -56,24 +54,25 @@ rxpress.init({
 
 rxpress.addHandlers(routes);
 rxpress.addEvents(events);
-await rxpress.start({ port: 3000 });
+rxpress.start().catch(console.error);
 ```
 
 Optional middleware such as Helmet, cookie-based sessions, compression, or CORS can be wired in with `rxpress.use(...)`; the [Getting Started guide](./docs/getting-started.md) shows both global and per-route patterns alongside the example server in `packages/server/src/main.ts`.
 
 ## Documentation
 
-| Topic                                        | Summary                                                                       |
-| -------------------------------------------- | ----------------------------------------------------------------------------- |
-| [Getting Started](./docs/getting-started.md) | Installation, adapters, bootstrapping, and auto-discovery patterns.           |
-| [Routing](./docs/routing.md)                 | API/HTTP routes, static files, SSE, cron jobs, and Next.js integration.       |
-| [Events](./docs/events.md)                   | Emitting and subscribing to domain events with shared context.                |
-| [Cron](./docs/cron.md)                       | Scheduling background jobs, retries, and graceful shutdown.                   |
-| [Documentation](./docs/documentation.md)     | Generating OpenAPI specifications from routes and Zod schemas.                |
-| [Adapters](./docs/adapters.md)               | Building logger/KV adapters and reusing the helper implementations.           |
-| [Realtime](./docs/realtime.md)               | WebSockets and server-sent events.                                            |
-| [Next.js](./docs/nextjs.md)                  | Serving Next apps alongside RPC routes, custom hooks, and testing strategies. |
-| [Observability](./docs/observability.md)     | Metrics, tracing, and the local Grafana/Jaeger stack.                         |
+| Topic                                          | Summary                                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| [Getting Started](./docs/getting-started.md)   | Installation, adapters, bootstrapping, and auto-discovery patterns.               |
+| [Routing](./docs/routing.md)                   | API/HTTP routes, static files, SSE, cron jobs, and Next.js integration.           |
+| [Events](./docs/events.md)                     | Emitting and subscribing to domain events with shared context.                    |
+| [Cron](./docs/cron.md)                         | Scheduling background jobs, retries, and graceful shutdown.                       |
+| [gRPC handlers](./docs/grpc.md)                | Running routes/events over gRPC, multi-target registries, TLS, and health checks. |
+| [Route Documentation](./docs/documentation.md) | Generating OpenAPI specifications from routes and Zod schemas.                    |
+| [Adapters](./docs/adapters.md)                 | Building logger/KV adapters and reusing the helper implementations.               |
+| [Realtime](./docs/realtime.md)                 | WebSockets and server-sent events.                                                |
+| [Next.js](./docs/nextjs.md)                    | Serving Next apps alongside RPC routes, custom hooks, and testing strategies.     |
+| [Observability](./docs/observability.md)       | OpenTelemtry Metrics, tracing, and the exmple local Grafana/Jaeger stack.         |
 
 ## Example Project
 

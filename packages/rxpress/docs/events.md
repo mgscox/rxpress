@@ -64,6 +64,42 @@ Event handlers receive:
 
 Because handlers run on RxJS observables you can fan-out, buffer, or throttle streams with custom operators if desired.
 
+## gRPC-powered events
+
+To execute an event handler in another process (or another language) switch the config to `kind: 'grpc'`. The bridge forwards the payload, run ID, and span context so remote handlers can continue emitting events, logging, and interacting with the same KV/store.
+
+```ts
+const auditEvent: EventConfig = {
+  kind: 'grpc',
+  subscribe: ['orders::created'],
+  emits: ['audit::recorded'],
+  grpc: {
+    handlerName: 'orders-handler',
+    timeoutMs: 2_000,
+  },
+};
+
+rxpress.addEvents(auditEvent);
+```
+
+The remote handler receives `method === 'event'` and can branch accordingly:
+
+```ts
+export const handler = {
+  name: 'orders-handler',
+  async invoke(method, input, meta, ctx) {
+    if (method === 'event') {
+      ctx.log('info', 'recording audit log', { trigger: input.topic });
+      await ctx.emit({ topic: 'audit::recorded', data: input.payload, run: ctx.run });
+      return {};
+    }
+    // handle HTTP/RPC invocations in the same module if desired
+  },
+};
+```
+
+Refer to [`docs/grpc.md`](./grpc.md) for provisioning tips and language-specific considerations.
+
 ## Best Practices
 
 - **Keep handlers idempotent.** They may be triggered from cron jobs or retries.

@@ -122,6 +122,46 @@ rxpress.init({
 
 The example server (`packages/server/src/main.ts`) demonstrates combining these with telemetry and other options.
 
+## gRPC bridge (polyglot handlers)
+
+Need to run business logic outside of Node.js? Enable the gRPC bridge so routes and events can call remote handlers written in any language that supports gRPC.
+
+```ts
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const handlerGlob = path.join(fileURLToPath(new URL('./handlers', import.meta.url)), '*.ts');
+
+rxpress.init({
+  config: {
+    grpc: {
+      bind: '127.0.0.1:0', // start a local in-process bridge (auto-picks a port)
+      localHandlers: handlerGlob, // autoload handler files
+      registry: {
+        local: {},
+      },
+      // target: 'grpc.internal:50051',  // optional remote bridge
+    },
+  },
+  logger,
+  kv,
+});
+
+rxpress.addHandlers({
+  type: 'api',
+  method: 'POST',
+  path: '/polyglot',
+  kind: 'grpc',
+  grpc: { handlerName: 'polyglot-handler', service: 'local' },
+});
+```
+
+Handlers receive the same context (`emit`, `kv`, `run`, `log`) and can emit additional events or touch run-scoped state. Read [`docs/grpc.md`](./grpc.md) for wiring remote runtimes (Python, Go, Rust, C#, …) and structuring your handler modules.
+
+Add TLS by pointing `grpc.tls` (or per-service overrides) at your PEM files; the bridge will automatically establish mutual TLS when both `certFile` and `keyFile` are present.
+
+Enable proactive health probes by adding `healthCheck` to the bridge or specific endpoints; offline nodes are skipped until probes succeed again.
+
 ## Request Parsers & Custom Middleware
 
 The Express app lives inside the library, but you can still install middleware in two ways.

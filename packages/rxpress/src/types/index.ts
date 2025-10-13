@@ -9,3 +9,4 @@ export * from './rxpress.types.js';
 export * from './run.types.js';
 export * from './documentation.types.js';
 export * from './run.types.js';
+export * from './grpc.types.js';

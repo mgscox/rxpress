@@ -14,6 +14,8 @@ import { SSEService } from './sse.service.js';
 import { createKVPath } from './kv-path.service.js';
 import { createRun as createRunScope, releaseRun as releaseRunScope } from './run.service.js';
 import { DocumentationService } from './documentation.service.js';
+import { GrpcBridgeService } from './grpc.service.js';
+import type { GrpcInvokeBinding } from '../types/grpc.types.js';
 
 export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
@@ -117,6 +119,98 @@ export namespace RouteService {
   let requestCounter: Counter;
   let requestDuration: Histogram;
   let requestLatency: Histogram;
+
+  const isRecord = (value: unknown): value is Record<string, unknown> => {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+  };
+
+  const isGrpcRoute = (route: RPCConfig): route is RPCConfig & { kind: 'grpc'; grpc: GrpcInvokeBinding } => {
+    return (route as Record<string, unknown>).kind === 'grpc';
+  };
+
+  const sanitizeHeaders = (headers: unknown): Record<string, string> | undefined => {
+    if (!isRecord(headers)) {
+      return undefined;
+    }
+
+    return Object.entries(headers).reduce<Record<string, string>>((acc, [key, value]) => {
+      if (typeof value === 'string') {
+        acc[key] = value;
+      }
+
+      return acc;
+    }, {});
+  };
+
+  const buildGrpcMeta = (route: RPCConfig, req: Request, runId: string, span?: Span) => {
+    const meta: Record<string, unknown> = {
+      run_id: runId,
+      http_method: req.method,
+      route: route.path,
+      path: req.path,
+      url: req.originalUrl,
+    };
+
+    if (span) {
+      const ctx = span.spanContext();
+      meta.trace_id = ctx.traceId;
+      meta.span_id = ctx.spanId;
+      meta.trace_flags = ctx.traceFlags;
+    }
+
+    return meta;
+  };
+
+  const buildGrpcInput = (req: Request) => {
+    return {
+      body: req.body,
+      query: req.query,
+      params: req.params,
+      headers: req.headers,
+      user: (req as rxRequest).user,
+    };
+  };
+
+  const normalizeGrpcResult = (route: RPCConfig, res: Response, payload: Record<string, unknown>): RPCResult => {
+    const headers = sanitizeHeaders(payload.headers);
+
+    if (headers) {
+      for (const [key, value] of Object.entries(headers)) {
+        res.setHeader(key, value);
+      }
+    }
+
+    const status = typeof payload.status === 'number' ? payload.status : undefined;
+    const mime = typeof payload.mime === 'string' ? payload.mime : undefined;
+
+    const reserved = new Set(['status', 'headers', 'mime']);
+    let bodyCandidate = payload.body;
+
+    if (bodyCandidate === undefined && isRecord(payload)) {
+      bodyCandidate = Object.fromEntries(Object.entries(payload).filter(([key]) => !reserved.has(key)));
+    }
+
+    if (route.type === 'api') {
+      const body = isRecord(bodyCandidate)
+        ? bodyCandidate
+        : { value: bodyCandidate ?? null };
+      return { status, body };
+    }
+
+    if (route.type === 'http') {
+      if (Buffer.isBuffer(bodyCandidate)) {
+        return { status, body: bodyCandidate.toString('utf8'), mime };
+      }
+
+      if (typeof bodyCandidate === 'string') {
+        return { status, body: bodyCandidate, mime };
+      }
+
+      return { status, body: JSON.stringify(bodyCandidate ?? ''), mime: mime ?? 'application/json' };
+    }
+
+    throw new Error('gRPC routes currently support HTTP/API handlers only.');
+  };
 
   function updateHttpMetrics(statusCode: number, initiatedTime: number, startTime: number, attributes: Record<string, string | number>) {
     const now = performance.now();
@@ -238,6 +332,25 @@ export namespace RouteService {
               }
             })
           })
+        }
+        else if (isGrpcRoute(route)) {
+          if (!route.grpc?.handlerName) {
+            throw new Error(`gRPC route ${route.path} missing handlerName`);
+          }
+
+          if (!GrpcBridgeService.isEnabled()) {
+            throw new Error('gRPC bridge not initialised – enable rxpress config.grpc to use kind:"grpc" routes.');
+          }
+
+          const invokeResult = await GrpcBridgeService.invoke({
+            binding: route.grpc,
+            method: route.type,
+            input: buildGrpcInput(req),
+            meta: buildGrpcMeta(route, req, run.id, span),
+          });
+
+          const payload = isRecord(invokeResult.output) ? invokeResult.output : {};
+          result = normalizeGrpcResult(route, res, payload);
         }
         else if ('handler' in route) {
           if (route.type === 'sse') {

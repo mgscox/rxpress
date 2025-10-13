@@ -11,6 +11,8 @@ const tests = [
   './rxpress.run-context.test.ts',
   './rxpress.validate-events.test.ts',
   './rxpress.workbench.test.ts',
+  './rxpress.grpc-health.test.ts',
+  './rxpress.grpc-discovery.test.ts',
   './readme-example.test.ts',
 ];
 

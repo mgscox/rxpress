@@ -5,6 +5,7 @@ import cookieSession from 'cookie-session';
 import type { MetricsConfig } from './metrics.types.js';
 import type { NextAdapterConfig } from './next.types.js';
 import type { DocumentationConfig } from './documentation.types.js';
+import type { GrpcConfig } from './grpc.types.js';
 
 type JsonOptions = Parameters<typeof json>[0];
 
@@ -29,6 +30,7 @@ export type RxpressConfig = {
   workbench?: {
     path: string;
   };
+  grpc?: GrpcConfig;
 };
 export type RxpressStartConfig = {
   eventDir?: string;

@@ -10,6 +10,7 @@ import { Logger } from './logger.types.js';
 import { Emit } from './emit.types.js';
 import { Context } from './metrics.types.js';
 import { RunContext } from './run.types.js';
+import type { GrpcInvokeBinding } from './grpc.types.js';
 
 export type rxRequest = Request & {_rxpress: {trace: {initiated: number, start: number}}, user?: {id?: string}}
 export type RPCTypes = 'http' | 'api' | 'sse';
@@ -72,14 +73,21 @@ type RPCConfigStatic = {
     filename: string,
     options?: SendFileOptions,
   };
+  kind?: 'local';
 };
 
 type RPCHandlerConfig<T extends RPCTypes> = {
+  kind?: 'local';
   handler: RPCFunction<T>;
 };
 
-export type RPCConfigHttp = (RPCConfigCommon<'http'> & (RPCConfigStatic | RPCHandlerConfig<'http'>));
-export type RPCConfigApi = RPCConfigCommon<'api'> & RPCHandlerConfig<'api'>;
+type RPCGrpcHandlerConfig = {
+  kind: 'grpc';
+  grpc: GrpcInvokeBinding;
+};
+
+export type RPCConfigHttp = RPCConfigCommon<'http'> & (RPCConfigStatic | RPCHandlerConfig<'http'> | RPCGrpcHandlerConfig);
+export type RPCConfigApi = RPCConfigCommon<'api'> & (RPCHandlerConfig<'api'> | RPCGrpcHandlerConfig);
 export type RPCConfigSse = RPCConfigCommon<'sse'> & RPCHandlerConfig<'sse'>;
 export type RPCConfig = RPCConfigHttp | RPCConfigApi | RPCConfigSse;
 export type RPCRoutes = RPCConfig[];
@@ -92,18 +100,23 @@ export type EventContext = {
   run?: RunContext;
 };
 export type EventFunction<T = unknown> = (input: T, ctx: EventContext) => MaybePromise<void>;
-type EventConfigBase<T> = {
+type EventConfigCommon<T> = {
   name?: string;
   description?: string;
   subscribe: string[];
   emits?: string[];
-  handler: EventFunction<T>;
   schema?: ZodType<T>;
 };
 
-export type EventConfig<T = unknown> =
-  | (EventConfigBase<T> & { strict?: false })
-  | (EventConfigBase<T> & { strict: true; schema: ZodType<T> });
+type EventConfigLocal<T> =
+  | (EventConfigCommon<T> & { kind?: 'local'; strict?: false; handler: EventFunction<T> })
+  | (EventConfigCommon<T> & { kind?: 'local'; strict: true; schema: ZodType<T>; handler: EventFunction<T> });
+
+type EventConfigGrpc<T> =
+  | (EventConfigCommon<T> & { kind: 'grpc'; strict?: false; grpc: GrpcInvokeBinding })
+  | (EventConfigCommon<T> & { kind: 'grpc'; strict: true; schema: ZodType<T>; grpc: GrpcInvokeBinding });
+
+export type EventConfig<T = unknown> = EventConfigLocal<T> | EventConfigGrpc<T>;
 export type BufferLike =
     | string
     | Buffer

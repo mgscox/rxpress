@@ -1,5 +1,7 @@
 # Migration Plan: rxpress Library Extraction
 
+Always ensure this document remains up-to-date with progress
+
 ## Goals
 
 - [ ] Extract the reusable RxJS-driven web server stack from `packages/server` into `packages/rxpress`.
@@ -83,6 +85,21 @@
 15. [ ] **Version & release:** establish release checklist, bump `version`, add CHANGELOG entry, and prepare `npm publish` workflow.
 16. [ ] **Post-publish integration:** update server workspace to depend on published semver (instead of relative path) and verify `npm install rxpress` works in a clean environment.
 17. [x] **Observability stack:** added Docker Compose (OTel Collector + Grafana) and default server telemetry configuration. Sample Grafana dashboard auto-provisioned via docker-compose.
+
+## Phase 6 – gRPC Handler Support (polyglot-ready)
+
+18. [x] **Design bridge service:** create `GrpcBridgeService` under `packages/rxpress/src/services/grpc.service.ts` that loads `handler_bridge.proto`, hosts `Invoker` + `ControlPlane`, and exposes `init`, `invokeRoute`, and `invokeEvent` APIs. Move the proto into the library (e.g., `packages/rxpress/src/grpc/proto/handler_bridge.proto`) and ensure it ships in the bundle.
+19. [x] **Extend configuration types:** update `RxpressConfig`, `RPCConfig`, and `EventConfig` to support `{ kind: 'grpc'; handlerName: string; target?: string; timeoutMs?: number; metadata?: Record<string,string>; }` alongside existing local handlers. Provide `grpc` root config (proto path, default target, optional local handler directories) in `packages/rxpress/src/types/index.ts`.
+20. [x] **Integrate with routes/events:** modify `RouteService` and `EventService` so entries marked `kind: 'grpc'` forward requests via `GrpcBridgeService`, carry run IDs/span context in `InvokeRequest.meta`, and translate `InvokeResponse` payloads/errors back into current HTTP/event semantics.
+21. [x] **Context bridging:** implement ControlPlane handling that maps remote `log`, `emit`, and `kv` operations onto Rxpress’ logger, `EventService.emit`, and KV adapters (including run-scoped KV keys). Add cleanup to release run scopes when the stream closes.
+22. [x] **Local handler bootstrap:** add optional `grpc.localHandlers` config that loads TypeScript handlers (mirroring `grpc_example/orchestrator/handlers`) so existing projects can adopt gRPC without remote processes. Ensure future remote handlers can reuse the same proto without code changes.
+23. [x] **Testing matrix:** create integration tests in `packages/rxpress/__tests__/` covering (a) HTTP route invoking a gRPC handler, (b) event subscription invoking a gRPC handler, and (c) run-scope propagation across the boundary. Tests should assert `log`, `emit`, and `kv` round-tripping via ControlPlane.
+24. [x] **Documentation updates:** document gRPC usage in `packages/rxpress/docs/` (new `grpc.md`, references in routing/events guides, README quick links) including polyglot handler guidance, configuration examples, and local vs remote handler deployment notes.
+25. [x] **Future remote support notes:** documented the remaining gRPC roadmap and stood up first-class health checks plus file-based discovery refresh. Follow-on items now focus on:
+    - Extending discovery beyond static files (e.g., DNS/service registry adapters, dynamic scale-out).
+    - Streaming RPC support (allow long-lived bidi streams for real-time workflows).
+    - Operational tooling (metrics on bridge throughput/errors, admin endpoints to list active handler connections).
+      See `TODO.md` for the detailed follow-up list.
 
 ## Considerations & Risks
 
