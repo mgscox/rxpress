@@ -4,3 +4,4 @@ logs/
 .nx/
 lerna-debug.log
 .eslintcahce
+rxpress-*.tgz
