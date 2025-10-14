@@ -21,16 +21,32 @@ export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
   let staticRoutDir: string | undefined;
 
+  const schemaToDescriptor = (schema?: z.ZodTypeAny) => {
+    if (!schema) {
+      return undefined;
+    }
+
+    const typeName = (schema as z.ZodTypeAny & { _def?: { typeName?: string } })._def?.typeName;
+    return {
+      description: schema.description,
+      type: typeName ?? schema.constructor.name ?? 'unknown',
+    };
+  };
+
   const resolveResponseSchema = (route: RPCConfig, status: number): z.ZodTypeAny | undefined => {
     if (!route.responseSchema) {
       return undefined;
     }
 
-    if (route.responseSchema instanceof z.ZodObject) {
-      return route.responseSchema;
+    if (route.responseSchema && typeof (route.responseSchema as z.ZodTypeAny).parse === 'function') {
+      return route.responseSchema as z.ZodTypeAny;
     }
 
-    return route.responseSchema[status];
+    if (route.responseSchema && typeof route.responseSchema === 'object') {
+      return (route.responseSchema as Record<number, z.ZodTypeAny>)[status];
+    }
+
+    return undefined;
   };
 
   const validateResponse = <T>(route: RPCConfig, status: number, payload: T): T => {
@@ -68,20 +84,18 @@ export namespace RouteService {
       route: {
         ...route,
         bodySchema: route.bodySchema 
-          ? z.toJSONSchema(route.bodySchema as any) 
+          ? schemaToDescriptor(route.bodySchema as z.ZodTypeAny)
           : undefined,
         queryParams: route.queryParams 
-          ? z.toJSONSchema(route.queryParams as any) 
+          ? schemaToDescriptor(route.queryParams as z.ZodTypeAny)
           : undefined,
         responseSchema: route.responseSchema
           ? route.responseSchema instanceof z.ZodObject
-            ? z.toJSONSchema(route.responseSchema)
-            : Object
-              .entries(route.responseSchema as Record<number, z.ZodObject<any>>)
-              .map(
-                ([code, schema]) => ({ statusCode: code, schema: z.toJSONSchema(schema) }
-                ),
-              )
+            ? schemaToDescriptor(route.responseSchema as z.ZodTypeAny)
+            : Object.entries(route.responseSchema as Record<number, z.ZodTypeAny>).map(([code, schema]) => ({
+              statusCode: code,
+              schema: schemaToDescriptor(schema),
+            }))
           : undefined,
       },
     };

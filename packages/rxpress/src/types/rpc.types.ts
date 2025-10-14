@@ -1,8 +1,7 @@
 import * as z from 'zod';
-import { ZodSchema } from 'zod';
 import { NextFunction, Request, Response } from 'express';
 import type { SendFileOptions } from 'express-serve-static-core';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeAny } from 'zod';
 import type { Span } from '@opentelemetry/api';
 
 import { KVBase, KVPath } from './kv.types.js';
@@ -63,8 +62,8 @@ type RPCConfigCommon<T extends RPCTypes> = {
   middleware?: RequestHandlerMiddleware[];
   emits?: string[];
   queryParams?: z.ZodArray<z.ZodString>;
-  bodySchema?: ZodSchema;
-  responseSchema?: z.ZodObject | Record<number, z.ZodObject>;
+  bodySchema?: ZodTypeAny;
+  responseSchema?: ZodTypeAny | Record<number, ZodTypeAny>;
   strict?: boolean;
 };
 
