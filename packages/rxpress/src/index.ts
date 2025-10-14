@@ -10,6 +10,7 @@ export type Request = expressRequest;
 export * from './rxpress.js';
 export * from './types/index.js';
 export * from './services/config.service.js';
+export { SSEChunkHandler } from './services/sse.service.js';
 
 /**
  * @example `helpers` provides example implementations - do not use for production

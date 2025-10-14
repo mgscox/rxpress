@@ -270,8 +270,11 @@ export namespace RouteService {
     const kvPath = createKVPath(kv);
     let result: RPCResult | undefined;
     let handlerError: unknown;
-    let sseSchema: z.ZodTypeAny | undefined;
-    const sseService: SSEService = new SSEService(req, res);
+    const sseFormat = route.type === 'sse' ? route.streamFormat ?? 'raw' : 'raw';
+    const responseSchema = route.type === 'sse' && route.responseSchema && typeof (route.responseSchema as z.ZodTypeAny).parse === 'function'
+      ? (route.responseSchema as z.ZodTypeAny)
+      : undefined;
+    const sseService: SSEService = new SSEService(req, res, sseFormat, responseSchema);
 
     const handlerContext = {
       emit: (param) => EventService.emit({ ...param, run, traceContext: span?.spanContext() }),
@@ -322,7 +325,7 @@ export namespace RouteService {
       if (route.type === 'sse') {
         sseService.sendSSEHeaders();
         const stream: RPCSSEStream = {
-          send: (payload: unknown, options?: SSESendOptions) => sseService.emitSsePayload(sseSchema, payload, options),
+          send: (payload: unknown, options?: SSESendOptions) => sseService.emitSsePayload(payload, options),
           error:  (payload: unknown, options?: SSESendOptions) => sseService.emitSseError(payload, options),
         };
         (handlerContext as HandlerContext<'sse'>).stream = stream;

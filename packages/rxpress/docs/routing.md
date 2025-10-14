@@ -109,7 +109,7 @@ rxpress.addHandlers({
 });
 ```
 
-Remote handlers can call `ctx.emit`, `ctx.kv`, `ctx.log`, and interact with the current run scope just like local handlers. See [`docs/grpc.md`](./grpc.md) for handler implementation patterns and multi-language guidance.
+Remote handlers can call `ctx.emit`, `ctx.kv`, `ctx.log`, and interact with the current run scope just like local handlers. See [`gPRC`](./grpc.md) for handler implementation patterns, multi-language guidance, and auto-discovery.
 
 ## Documenting Routes
 
@@ -117,7 +117,7 @@ Enable the documentation generator to publish an OpenAPI specification for every
 
 ## Server-Sent Events
 
-Declare SSE routes with `type: 'sse'`. The handler receives a `stream` helper for sending data/events and signals errors.
+Declare SSE routes with `type: 'sse'`. The handler receives a `stream` helper for sending data and signalling errors. Payloads stream as raw chunks by default, so clients can iterate the response body without decoding SSE frames. Attach a `responseSchema` (for example a `z.object`) to validate each message and have `rxpress` emit newline-delimited JSON that consumers can `JSON.parse`. Opt into classic `event:` framing by setting `streamFormat: 'event'`.
 
 ```ts
 const sseRoute: RPCConfig = {
@@ -130,6 +130,8 @@ const sseRoute: RPCConfig = {
   },
 };
 ```
+
+For further details, refer to [Realtime](./realtime.md) documentation.
 
 ## Next.js Integration
 
@@ -161,3 +163,5 @@ rxpress.init({
 - `*.cron.js` → cron definitions
 
 This enables feature-based folder structures while keeping runtime registration succinct.
+
+**NOTE 1**: If you are using Typescript, simply load the files from the appropriate build output folder, rather than the source folder.

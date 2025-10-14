@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import * as z from 'zod';
-
 import { rxpress } from '../src/rxpress.js';
 import type { Logger, KVBase, RPCConfig, LogLogger } from '../src/types/index.js';
 
@@ -95,13 +94,15 @@ await (async () => {
     assert.equal(response.status, 200);
 
     const contentType = response.headers.get('content-type');
-    assert.ok(contentType?.includes('text/event-stream'), 'expected text/event-stream content type');
+    assert.ok(
+      contentType?.includes('application/x-ndjson')
+      || contentType?.includes('application/json')
+      || contentType?.includes('text/plain'),
+      'expected ndjson-friendly content type',
+    );
 
     const payload = await response.text();
-    assert.ok(
-      payload.includes('data: {"message":"hello"}'),
-      `expected SSE data frame, received: ${payload}`,
-    );
+    assert.equal(payload, '{"message":"hello"}\n');
     console.info('rxpress.sse tests passed');
   }
   finally {

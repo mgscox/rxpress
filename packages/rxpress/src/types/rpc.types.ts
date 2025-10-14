@@ -24,6 +24,7 @@ export type SSESendOptions = {
   id?: string;
   retry?: number;
 };
+export type RPCStreamFormat = 'raw' | 'event';
 export interface RPCSSEStream<T = unknown> {
   send: (payload: T, options?: SSESendOptions) => void;
   error: (payload: unknown, options?: SSESendOptions) => void;
@@ -87,7 +88,9 @@ type RPCGrpcHandlerConfig = {
 
 export type RPCConfigHttp = RPCConfigCommon<'http'> & (RPCConfigStatic | RPCHandlerConfig<'http'> | RPCGrpcHandlerConfig);
 export type RPCConfigApi = RPCConfigCommon<'api'> & (RPCHandlerConfig<'api'> | RPCGrpcHandlerConfig);
-export type RPCConfigSse = RPCConfigCommon<'sse'> & RPCHandlerConfig<'sse'>;
+export type RPCConfigSse = RPCConfigCommon<'sse'> & {
+  streamFormat?: RPCStreamFormat;
+} & RPCHandlerConfig<'sse'>;
 export type RPCConfig = RPCConfigHttp | RPCConfigApi | RPCConfigSse;
 export type RPCRoutes = RPCConfig[];
 export type EventContext = {
