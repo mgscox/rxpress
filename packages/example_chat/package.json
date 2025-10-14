@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "dotenv": "^16.4.7",
-    "rxpress": "file:../rxpress/rxpress-0.1.0.tgz",
+    "openai": "^4.104.0",
+    "ora": "^5.4.1",
+    "rxpress": "file:rxpress-0.1.0.tgz",
     "zod": "^4.1.12"
   },
   "devDependencies": {

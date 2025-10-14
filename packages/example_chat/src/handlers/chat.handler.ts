@@ -1,3 +1,5 @@
+import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { z } from 'zod';
 import type { RPCConfig } from 'rxpress';
 
@@ -11,76 +13,86 @@ const chatRequestSchema = z.object({
 
 type ChatRequest = z.infer<typeof chatRequestSchema>;
 
+const streamChunkSchema = z.object({
+  id: z.string(),
+  object: z.string(),
+  created: z.number(),
+  model: z.string(),
+  system_fingerprint: z.string().nullable().optional(),
+  choices: z.array(
+    z.object({
+      index: z.number(),
+      delta: z.object({
+        role: z.string().optional(),
+        content: z.string().optional(),
+      }),
+      logprobs: z.any().nullable().optional(),
+      finish_reason: z.string().nullable().optional(),
+    }),
+  ),
+});
+
+const getClient = (() => {
+  let client: OpenAI | null = null;
+
+  return () => {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not defined');
+    }
+
+    if (!client) {
+      client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        ...(process.env.OPENAI_BASE_URL ? { baseURL: process.env.OPENAI_BASE_URL } : {}),
+      });
+    }
+
+    return client;
+  };
+})();
+
 export default {
-  type: 'api',
+  type: 'sse',
   method: 'POST',
   path: '/chat',
   bodySchema: chatRequestSchema,
-  handler: async (req, { logger }) => {
-    const { prompt, history = [], model } = req.body as ChatRequest;
-    const endpointBase = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-    const chatEndpoint = endpointBase + '/chat/completions';
-    const payload = {
-      model: model ?? process.env.OPENAI_MODEL ?? 'gpt-5-nano',
-      stream: false,
-      messages: [
-        ...history.map(({ role, content }) => ({ role, content })),
-        { role: 'user', content: prompt },
-      ],
-    };
-
-    let response: Response;
+  responseSchema: streamChunkSchema,
+  handler: async (req, { logger, stream }) => {
+    let client: OpenAI;
 
     try {
-      response = await fetch(chatEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      client = getClient();
     }
     catch (error) {
-      logger.error('Failed to reach OpenAI endpoint', {
-        endpoint: chatEndpoint,
-        error: `${error}`,
+      const message = error instanceof Error ? error.message : `${error}`;
+      logger.error('OpenAI client initialisation failed', { message });
+      stream.error(message);
+      return;
+    }
+
+    const { prompt, history = [], model } = req.body as ChatRequest;
+    const messages: ChatCompletionMessageParam[] = [
+      ...history.map(({ role, content }) => ({ role, content } as ChatCompletionMessageParam)),
+      { role: 'user', content: prompt },
+    ];
+    const chosenModel = model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+
+    try {
+      const completion = await client.chat.completions.create({
+        model: chosenModel,
+        messages,
+        stream: true,
       });
-      return {
-        status: 502,
-        body: { ok: false, error: 'OpenAI_unreachable', detail: `${error}` },
-      };
+
+      for await (const chunk of completion) {
+        stream.send(chunk);
+      }
+
     }
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      logger.error('OpenAI request failed', { status: response.status, body: errorText });
-      return {
-        status: 502,
-        body: { ok: false, error: 'OpenAI_request_failed', detail: errorText },
-      };
+    catch (error) {
+      const message = error instanceof Error ? error.message : `${error}`;
+      logger.error('OpenAI streaming request failed', { message });
+      stream.error(message);
     }
-
-    const data = await response.json().catch(() => null);
-
-    if (!data) {
-      logger.error('OpenAI returned invalid JSON');
-      return {
-        status: 502,
-        body: { ok: false, error: 'OpenAI_invalid_response' },
-      };
-    }
-
-    const outputText = data.choices?.[0]?.message?.content ?? '';
-    const ok = outputText.length;
-
-    return {
-      status: ok ? 200 : 400,
-      body: {
-        ok,
-        output: outputText,
-        raw: data,
-      },
-    };
   },
 } as RPCConfig;

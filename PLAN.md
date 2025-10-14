@@ -99,7 +99,12 @@ Always ensure this document remains up-to-date with progress
     - Extending discovery beyond static files (e.g., DNS/service registry adapters, dynamic scale-out).
     - Streaming RPC support (allow long-lived bidi streams for real-time workflows).
     - Operational tooling (metrics on bridge throughput/errors, admin endpoints to list active handler connections).
-      See `TODO.md` for the detailed follow-up list.
+
+## gRPC Next steps
+
+- [x] Implement service discovery/health checks so the bridge can target multiple remote handler hosts.
+- [ ] Add mTLS to secure traffic between the Node.js orchestrator and remote language runtimes.
+- [ ] Extend your handlers with streaming RPCs when you need long-lived bidirectional workflows.
 
 ## Considerations & Risks
 

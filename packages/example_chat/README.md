@@ -1,6 +1,6 @@
 # example_chat
 
-Minimal CLI chat demo built on the locally packed `rxpress` library. It starts an `rxpress` server with a `/chat` API route, forwards prompts to an [OpenAI](https://openai.com/) compatible API via `fetch`, and streams the assistant responses back to your terminal.
+Minimal CLI chat demo built on the locally packed `rxpress` library. It starts an `rxpress` server with a `/chat` streaming route, forwards prompts to an [OpenAI](https://openai.com/) compatible API using the official client, and streams assistant tokens back to your terminal in real time.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ npm install --workspace example_chat
 npm run start --workspace example_chat
 ```
 
-Type messages at the prompt. The CLI uses `fetch` to call the local `/chat` route, which in turn calls the Ollama chat API. Type `exit` to quit.
+Type messages at the prompt. The CLI opens a streaming HTTP connection to the local `/chat` route and renders tokens as they are produced—no SSE frame parsing required. Type `exit` to quit.
 
 You can override the model or endpoint with environment variables:
 

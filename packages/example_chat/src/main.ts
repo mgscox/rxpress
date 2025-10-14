@@ -1,9 +1,11 @@
 import readline from 'node:readline/promises';
+import { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { stdin as input, stdout as output } from 'node:process';
 import { resolve } from 'node:path';
 import dotenv from 'dotenv';
-import { rxpress } from 'rxpress';
+import { rxpress, SSEChunkHandler } from 'rxpress';
 import type { Logger, KVBase } from 'rxpress';
+import ora from "ora";
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -67,33 +69,28 @@ async function startCli(port: number) {
       break;
     }
 
-    history.push({ role: 'user', content: prompt });
+    try {
+      const requestHistory = [...history, { role: 'user', content: prompt }];
+      const answer = await streamChat(port, {
+        prompt,
+        history: requestHistory,
+      });
 
-    const response = await fetch(`http://127.0.0.1:${port}/chat`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ prompt, history }),
-    });
+      history.push({ role: 'user', content: prompt });
 
-    if (!response.ok) {
-      console.error('Request failed', await response.text());
-      rl.prompt();
-      continue;
+      if (answer) {
+        history.push({ role: 'assistant', content: answer });
+      }
+      else {
+        console.log('[no content returned]');
+      }
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : `${error}`;
+      console.error(`\nChat error: ${message}`);
     }
 
-    const payload = await response.json();
-
-    if (!payload.ok) {
-      console.error('Chat error', payload.detail ?? payload.error);
-      rl.prompt();
-      continue;
-    }
-
-    const answer: string = payload.output ?? '';
-    history.push({ role: 'assistant', content: answer });
-    console.log(`assistant> ${answer}`);
+    process.stdout.write('\n');
     rl.prompt();
   }
 
@@ -104,9 +101,46 @@ async function startCli(port: number) {
   process.exit(0);
 }
 
-dotenv.config({ path: resolve(process.cwd(), '.env'), encoding: 'utf-8', debug: true });
+async function streamChat(port: number, payload: Record<string, unknown>): Promise<string> {
+  let prefix = 'assistant> ';
+  let reply = '';
+  const spinner = ora({ text: 'Thinking ', spinner: 'dots', discardStdin: false }).start();
+
+  const response = await fetch(`http://127.0.0.1:${port}/chat`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  const handler = await SSEChunkHandler({logger});
+  return new Promise(resolve => {
+    handler.on('delta', (delta) => {
+      spinner.stop();
+      const chunk = (delta.choices?.[0]?.delta?.content || '');
+      process.stdout.write(prefix + chunk);
+      reply += chunk;
+      prefix = '';
+    });
+    handler.on('complete', (_message) => {
+      spinner.stop();
+      resolve(reply);
+    })
+    handler.run(response.body as NodeReadableStream<Uint8Array>)
+  })
+}
+
+dotenv.config({ 
+  path: resolve(process.cwd(), '.env'), 
+  encoding: 'utf-8', 
+});
 
 bootstrap().catch((error) => {
-  logger.error('Failed to start example chat', error);
-  process.exit(1);
+  logger.error('Failed to start example chat', {error});
+  process.exitCode = 1;
 });
