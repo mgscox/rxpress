@@ -259,9 +259,3 @@ If you prefer a ready-made reference, model your implementation on the `handler_
 - gRPC status codes are translated back into `Error` objects. A non-zero status code will surface as a 500-level response for HTTP routes or an error log for events.
 - Timeouts and metadata can be configured per binding with `timeoutMs` and `metadata` fields.
 - The bridge automatically cleans up run-scoped KV entries after the handler and any downstream events finish executing.
-
-## Next steps
-
-- Implement service discovery/health checks so the bridge can target multiple remote handler hosts.
-- Add mTLS to secure traffic between the Node.js orchestrator and remote language runtimes.
-- Extend your handlers with streaming RPCs when you need long-lived bidirectional workflows.
