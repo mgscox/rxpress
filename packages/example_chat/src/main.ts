@@ -3,58 +3,37 @@ import { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { stdin as input, stdout as output } from 'node:process';
 import { resolve } from 'node:path';
 import dotenv from 'dotenv';
-import { rxpress, SSEChunkHandler } from 'rxpress';
-import type { Logger, KVBase } from 'rxpress';
+import { helpers, rxpress, SSEChunkHandler } from 'rxpress';
 import ora from "ora";
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
-const logger: Logger = {
-  child: () => logger,
-  info: (msg, meta) => console.log('[info]', msg, meta ?? ''),
-  error: (msg, meta) => console.error('[error]', msg, meta ?? ''),
-  debug: (msg, meta) => console.debug('[debug]', msg, meta ?? ''),
-  warn: (msg, meta) => console.warn('[warn]', msg, meta ?? ''),
-  log: (payload) => console.log(payload),
-  addListener: () => undefined,
-};
-
-const kvStore = new Map<string, unknown>();
-const kv: KVBase = {
-  set: (key, value) => {
-    kvStore.set(key, value);
-  },
-  get: async <T>(key: string) => kvStore.get(key) as T | undefined,
-  has: (key) => kvStore.has(key),
-  del: (key) => {
-    kvStore.delete(key);
-  },
-};
+const logger = helpers.simplelLogger;
 
 async function bootstrap() {
+  dotenv.config({ 
+    path: resolve(process.cwd(), '.env'), 
+    encoding: 'utf-8', 
+  });
   rxpress.init({
     config: {
       loadEnv: false,
     },
     logger,
-    kv,
+    kv: helpers.createMemoryKv('chat', false),
   });
-
   await rxpress.load({
     handlerDir: new URL('./handlers', import.meta.url).pathname,
   });
-
   const { port } = await rxpress.start({ port: Number(process.env.PORT) || 3000 });
   console.log(`rxpress chat server listening on http://127.0.0.1:${port}`);
-
   await startCli(port);
 }
 
 async function startCli(port: number) {
-  const rl = readline.createInterface({ input, output, prompt: 'you> ' });
   const history: ChatMessage[] = [];
-
-  console.log('Type messages to chat with the model. Type "exit" to quit.');
+  console.log(`Type messages to chat with the ${process.env.API_MODEL || 'LLM'} model. Type "exit" to quit.`);
+  const rl = readline.createInterface({ input, output, prompt: 'you> ' });
   rl.prompt();
 
   for await (const line of rl) {
@@ -75,7 +54,6 @@ async function startCli(port: number) {
         prompt,
         history: requestHistory,
       });
-
       history.push({ role: 'user', content: prompt });
 
       if (answer) {
@@ -105,7 +83,6 @@ async function streamChat(port: number, payload: Record<string, unknown>): Promi
   let prefix = 'assistant> ';
   let reply = '';
   const spinner = ora({ text: 'Thinking ', spinner: 'dots', discardStdin: false }).start();
-
   const response = await fetch(`http://127.0.0.1:${port}/chat`, {
     method: 'POST',
     headers: {
@@ -129,16 +106,12 @@ async function streamChat(port: number, payload: Record<string, unknown>): Promi
     });
     handler.on('complete', (_message) => {
       spinner.stop();
+      process.stdout.write(`\n`);
       resolve(reply);
     })
     handler.run(response.body as NodeReadableStream<Uint8Array>)
   })
 }
-
-dotenv.config({ 
-  path: resolve(process.cwd(), '.env'), 
-  encoding: 'utf-8', 
-});
 
 bootstrap().catch((error) => {
   logger.error('Failed to start example chat', {error});

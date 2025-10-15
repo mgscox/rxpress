@@ -174,7 +174,7 @@ type Options<T> = {
   signal?: AbortSignal;
 };
 
-// A sensible default: try JSON, fall back to raw string
+// Default JSON parser
 function defaultParse<T = string>(data: string): T | string {
   try {
     return JSON.parse(data);
@@ -218,8 +218,8 @@ class SSEChunker<T> extends EventEmitter {
         const delta = this.parse(trimmed, this.logger);
         message += delta;
 
-        if (delta && !this.emit('delta', delta as T)) {
-          this.logger?.warn('[SSEChunk] No listeners for event "delta"')
+        if (delta) {
+          this.emit('delta', delta as T);
         }
       }
     }
@@ -237,9 +237,7 @@ class SSEChunker<T> extends EventEmitter {
       }
     }
 
-    if (!this.emit('complete', message as T)) {
-      this.logger?.debug('[SSEChunk] No listeners for event "complete"')
-    }
+    this.emit('complete', message as T);
   }
 }
 

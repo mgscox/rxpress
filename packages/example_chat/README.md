@@ -22,3 +22,7 @@ You can override the model or endpoint with environment variables:
 ```bash
 OPENAI_MODEL=llama3.1:latest OPENAI_BASE_URL=http://localhost:11434/api OPENAI_API_KEY=ollama npm run start --workspace example_chat
 ```
+
+## Inplementation notes
+
+The server and CLI client are implemented in the `main.ts` file, with a single API route SSE handler for `/chat` to provide asynchronous data. Whilst we could have written the handler to use Websockets for realtime streaming, or have replicated the OpenAI API interface to enable the client to use OpenAI library, we wanted to highlight the SSE helper utility which handles edge-cases and decoding of NDJSON for you in a simple-to-use function.
