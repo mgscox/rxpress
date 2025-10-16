@@ -14,52 +14,11 @@ This guide walks through the minimal steps required to bootstrap an application 
 npm install rxpress
 ```
 
-You bring your own logger and key/value adapters. Copy the reference implementations from [`src/helpers`](../src/helpers) or wire in your existing infrastructure.
-
-```ts
-// adapters/logger.ts
-import pino from 'pino';
-import type { Logger, LogLogger } from 'rxpress';
-
-const base = pino({ level: process.env.LOG_LEVEL ?? 'info' });
-
-export const logger: Logger = {
-  child(meta) {
-    const child = base.child(meta);
-    return { ...logger, info: child.info.bind(child) };
-  },
-  info: (...args) => base.info(...args),
-  error: (...args) => base.error(...args),
-  debug: (...args) => base.debug(...args),
-  warn: (...args) => base.warn(...args),
-  log: (payload) => base.info(payload),
-  addListener(_cb: LogLogger) {
-    /* optional: forward structured logs elsewhere */
-  },
-};
-```
-
-```ts
-// adapters/kv.ts
-import type { KVBase } from 'rxpress';
-
-const memory = new Map<string, unknown>();
-
-export const kv: KVBase = {
-  set: (key, value) => memory.set(key, value),
-  get: (key) => memory.get(key),
-  has: (key) => memory.has(key),
-  del: (key) => memory.delete(key),
-};
-```
-
 ## Bootstrapping
 
 ```ts
-import { rxpress } from 'rxpress';
+import { rxpress, simplelLogger, createMemoryKv } from 'rxpress';
 import type { RPCConfig, EventConfig } from 'rxpress';
-import { logger } from './adapters/logger.js'; // OR use 'simple-logger.service.js' for a quick start
-import { kv } from './adapters/kv.js'; // OR use 'memory-kv.service.js'
 
 const routes: RPCConfig[] = [
   {
@@ -88,8 +47,8 @@ rxpress.init({
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
     },
   },
-  logger,
-  kv,
+  logger: simpleLogger,
+  kv: new createMemoryKv('example'),
 });
 
 rxpress.addHandlers(routes);
@@ -108,7 +67,9 @@ See the next section for optional security middleware (Helmet, cookie-session) t
 rxpress.init({
   config: {
     port: 3000,
-    helmet: {},
+    helmet: {
+      /* you probably don't want a blank helmet configuration! */
+    },
     session: {
       name: 'sessionId',
       secret: process.env.SESSION_SECRET ?? 'replace-me',
@@ -206,6 +167,34 @@ const submitForm: RPCConfig = {
 ```
 
 Attach `parseForm` only where you need it, or reuse the same instance across multiple routes. Global JSON parsing is already configured via `express.json()`; adjust its options through `config.json` (for example `limit: '2mb'`) when you call `rxpress.init`.
+
+### Streaming operators with `pipes`
+
+Because `rxpress` sits on top of RxJS, every handler is ultimately subscribed to an observable. Routes and events expose an optional `pipes` array so you can insert RxJS operators before your handler runs. Use this hook for cross-cutting concerns such as throttling, sampling, buffering, or inline telemetry.
+
+```ts
+import { tap } from 'rxjs/operators';
+
+const auditedRoute: RPCConfig = {
+  type: 'api',
+  method: 'POST',
+  path: '/orders',
+  pipes: [
+    tap(({ req }) => auditLogger.info('order received', { id: req.headers['x-request-id'] })),
+  ],
+  handler: async (req) => ({ status: 202, body: { ok: true } }),
+};
+
+const countedEvent: EventConfig = {
+  subscribe: ['order.created'],
+  pipes: [tap(({ data }) => metrics.counter.add(1, { topic: 'order.created' }))],
+  handler: async ({ data }, { logger }) => {
+    logger.info('new order', data);
+  },
+};
+```
+
+Each operator receives the full observable payload: for routes it is `{ req, res, ctx }`; for events it is `{ data, run, traceContext }`. Operators should return the stream—`rxpress` subscribes after your pipeline finishes. Leave `pipes` undefined if you do not need additional RxJS behaviour.
 
 ## Auto-loading by Convention
 

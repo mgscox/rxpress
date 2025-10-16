@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { Subject } from 'rxjs';
+import { Subject, Observable } from 'rxjs';
 import * as z from 'zod';
 import { performance } from 'node:perf_hooks';
 import { Counter, Histogram, SpanStatusCode } from '@opentelemetry/api';
@@ -513,6 +513,9 @@ export namespace RouteService {
     const pub$ = new Subject<RPCContext>();
     const method = route.method.toLowerCase() as keyof typeof router & ("get" | "post" | "put" | "delete");
     pubs$[signature] = pub$;
+    const source$ = route.pipes?.length
+      ? route.pipes.reduce<Observable<RPCContext>>((stream, operator) => stream.pipe(operator), pub$)
+      : pub$;
     router[method](route.path, ...(route.middleware?.map(m => middlewareWrapper(m)) || []), (req, res) => {
       // capture the active ctx at the moment the request hits Express
       const activeCtx = MetricService.getContext().active();
@@ -525,7 +528,7 @@ export namespace RouteService {
       }
       pub$.next({ req: rxReq, res, ctx: activeCtx });
     });
-    pub$.subscribe({
+    source$.subscribe({
       next: ({ req, res, ctx }) => {
         req._rxpress.trace.start = performance.now();
         const tracer = MetricService.getTracer();

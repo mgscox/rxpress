@@ -1,26 +1,18 @@
-import { Subject } from 'rxjs';
-import type { SpanContext } from '@opentelemetry/api';
+import { Observable, Subject } from 'rxjs';
 import { SpanStatusCode } from '@opentelemetry/api';
 import type { ZodType } from 'zod';
 
-import { EventConfig } from '../types/rpc.types.js';
+import { EventConfig, EventPipelinePayload } from '../types/rpc.types.js';
 import { KVBase } from '../types/kv.types.js';
 import { Logger } from '../types/logger.types.js';
 import { Emit } from '../types/emit.types.js';
-import { RunContext } from '../types/run.types.js';
 import { createKVPath } from './kv-path.service.js';
 import { retainRun, releaseRun } from './run.service.js';
 import { MetricService } from './metrics.service.js';
 import { GrpcBridgeService } from './grpc.service.js';
 import type { GrpcInvokeBinding } from '../types/grpc.types.js';
 
-type EmitPayload = {
-  data?: unknown;
-  run?: RunContext;
-  traceContext?: SpanContext;
-};
-
-const events$: Record<string, Subject<EmitPayload>> = {};
+const events$: Record<string, Subject<EventPipelinePayload>> = {};
 
 export namespace EventService {
   export const emit: Emit = ({ topic, data, run, traceContext }) => {
@@ -40,8 +32,12 @@ export namespace EventService {
 
     for (const event of entries) {
       event.subscribe.forEach((topic: string) => {
-        events$[topic] ?? (events$[topic] = new Subject());
-        events$[topic].subscribe({
+        events$[topic] ?? (events$[topic] = new Subject<EventPipelinePayload>());
+        const subject = events$[topic] as Subject<EventPipelinePayload<T>>;
+        const source$ = event.pipes?.length
+          ? event.pipes.reduce<Observable<EventPipelinePayload<T>>>((stream, operator) => stream.pipe(operator), subject)
+          : subject;
+        source$.subscribe({
           next: (payload) => {
             const { data, run, traceContext } = payload;
             const emitBase: Emit = run

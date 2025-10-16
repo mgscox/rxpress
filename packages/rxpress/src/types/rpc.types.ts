@@ -2,7 +2,8 @@ import * as z from 'zod';
 import { NextFunction, Request, Response } from 'express';
 import type { SendFileOptions } from 'express-serve-static-core';
 import type { ZodType, ZodTypeAny } from 'zod';
-import type { Span } from '@opentelemetry/api';
+import type { OperatorFunction } from 'rxjs';
+import type { Span, SpanContext } from '@opentelemetry/api';
 
 import { KVBase, KVPath } from './kv.types.js';
 import { Logger } from './logger.types.js';
@@ -66,6 +67,7 @@ type RPCConfigCommon<T extends RPCTypes> = {
   bodySchema?: ZodTypeAny;
   responseSchema?: ZodTypeAny | Record<number, ZodTypeAny>;
   strict?: boolean;
+  pipes?: OperatorFunction<RPCContext, RPCContext>[];
 };
 
 type RPCConfigStatic = {
@@ -108,6 +110,7 @@ type EventConfigCommon<T> = {
   subscribe: string[];
   emits?: string[];
   schema?: ZodType<T>;
+  pipes?: OperatorFunction<EventPipelinePayload<T>, EventPipelinePayload<T>>[];
 };
 
 type EventConfigLocal<T> =
@@ -119,6 +122,11 @@ type EventConfigGrpc<T> =
   | (EventConfigCommon<T> & { kind: 'grpc'; strict: true; schema: ZodType<T>; grpc: GrpcInvokeBinding });
 
 export type EventConfig<T = unknown> = EventConfigLocal<T> | EventConfigGrpc<T>;
+export type EventPipelinePayload<T = unknown> = {
+  data?: T;
+  run?: RunContext;
+  traceContext?: SpanContext;
+};
 export type BufferLike =
     | string
     | Buffer
