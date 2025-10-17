@@ -15,6 +15,7 @@ import {
   BufferLike,
   HelmetOptions,
   RxpressStartConfig,
+  ReactiveConfig,
 } from './types/index.js';
 
 import { EventService } from './services/event.service.js';
@@ -27,6 +28,8 @@ import { NextService } from './services/next.service.js';
 import { DocumentationService } from './services/documentation.service.js';
 import { TopologyService } from './services/topology.service.js';
 import { GrpcBridgeService } from './services/grpc.service.js';
+import { ReactiveService } from './services/reactive.service.js';
+import { createKVPath } from './services/kv-path.service.js';
 
 const createHelmetMiddleware = helmet as unknown as (options?: HelmetOptions) => RequestHandler;
 
@@ -41,6 +44,7 @@ export namespace rxpress {
   let inlineRouteCounter = 0;
   let inlineEventCounter = 0;
   let inlineCronCounter = 0;
+  let inlineReactiveCounter = 0;
 
   const ensureInitialized = () => {
     if (!app || !activeLogger || !activeKv || !activeConfig) {
@@ -339,6 +343,28 @@ export namespace rxpress {
     process.on('unhandledRejection', async (reason) => {
       EventService.emit({ topic: 'SYS:::UNHANDLED_REJECTION', data: { reason } });
       await stop(true);
+    });
+  }
+
+  export const state = ReactiveService.state;
+
+  export function watch<T extends object, U = T>(
+    reactive: ReactiveService.StateLike<T>,
+    cfg: ReactiveConfig<T, U>
+  ) {
+    ensureInitialized();
+
+    const origin = cfg.name
+      ? `reactive:${cfg.name}`
+      : `inline:reactive_${++inlineReactiveCounter}`;
+
+    TopologyService.registerReactive(cfg, origin);
+
+    return ReactiveService.watch(reactive, cfg, {
+      emit: EventService.emit,
+      kv: activeKv!,
+      kvPath: createKVPath(activeKv!),
+      logger: activeLogger!,
     });
   }
 }

@@ -8,5 +8,6 @@ export * from './rpc.types.js';
 export * from './rxpress.types.js';
 export * from './run.types.js';
 export * from './documentation.types.js';
+export * from './reactive.types.js';
 export * from './run.types.js';
 export * from './grpc.types.js';

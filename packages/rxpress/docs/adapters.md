@@ -3,7 +3,7 @@
 `rxpress` keeps logging and key-value persistence outside the library so you can plug in whatever stack your organisation trusts. Only two adapters are required:
 
 - **Logger** (`Logger` interface) – exposes levelled logging (`info`, `debug`, `error`, etc.) and optional listeners.
-- **KV Store** (`KVBase`) – minimal set/get/del API used for sharing state between routes, events, and cron jobs.
+- **KV Store** (`KVBase`) – minimal set/get/del API used for sharing state between routes, events, cron jobs, and reactive watchers.
 
 ## Logger Adapter
 

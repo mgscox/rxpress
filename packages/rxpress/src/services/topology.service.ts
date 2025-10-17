@@ -3,10 +3,12 @@ import { basename } from 'node:path';
 import type { CronConfig } from '../types/cron.types.js';
 import type { EventConfig } from '../types/rpc.types.js';
 import type { RPCConfig } from '../types/rpc.types.js';
+import type { ReactiveConfig } from '../types/reactive.types.js';
 
 const routes = new Map<string, RouteMeta>();
 const events = new Map<string, EventMeta>();
 const crons = new Map<string, CronMeta>();
+const reactives = new Map<string, ReactiveMeta>();
 const topics = new Map<string, TopicMeta>();
 
 interface RouteMeta {
@@ -37,13 +39,21 @@ interface CronMeta {
   emits: string[];
 }
 
+interface ReactiveMeta {
+  id: string;
+  name?: string;
+  description?: string;
+  origin: string;
+  emits: string[];
+}
+
 interface TopicMeta {
   name: string;
   emitters: Set<string>;
   subscribers: Set<string>;
 }
 
-type Meta = TopicMeta | RouteMeta | EventMeta | CronMeta;
+type Meta = TopicMeta | RouteMeta | EventMeta | CronMeta | ReactiveMeta;
 
 interface ValidationResult {
   missingHandlers: Array<{ topic: string; sources: string[] }>;
@@ -143,7 +153,7 @@ const registerCronInternal = (cron: CronConfig, origin: string) => {
   }
 };
 
-const toLabel = (type: 'route' | 'event' | 'cron', meta: RouteMeta | EventMeta | CronMeta): string => {
+const toLabel = (type: 'route' | 'event' | 'cron' | 'reactive', meta: RouteMeta | EventMeta | CronMeta | ReactiveMeta): string => {
   switch (type) {
     case 'route': {
       const m = meta as RouteMeta;
@@ -160,6 +170,11 @@ const toLabel = (type: 'route' | 'event' | 'cron', meta: RouteMeta | EventMeta |
     case 'cron': {
       const c = meta as CronMeta;
       return `cron ${c.schedule}`;
+    }
+
+    case 'reactive': {
+      const r = meta as ReactiveMeta;
+      return `reactive ${r.name ?? ''}`.trim();
     }
 
     default:
@@ -198,6 +213,11 @@ const toDot = (): string => {
 
   for (const meta of crons.values()) {
     lines.push(toDotNode(meta.id, toLabel('cron', meta), { shape: 'hexagon', style: 'filled', fillcolor: '#fff8e1', comment: buildComment(meta) }));
+    defined.add(meta.id);
+  }
+
+  for (const meta of reactives.values()) {
+    lines.push(toDotNode(meta.id, toLabel('reactive', meta), { shape: 'parallelogram', style: 'filled', fillcolor: '#f3e5f5', comment: buildComment(meta) }));
     defined.add(meta.id);
   }
 
@@ -256,6 +276,7 @@ const reset = (): void => {
   routes.clear();
   events.clear();
   crons.clear();
+  reactives.clear();
   topics.clear();
 };
 
@@ -272,6 +293,23 @@ export namespace TopologyService {
 
   export const registerCron = (cron: CronConfig, origin: string) => {
     registerCronInternal(cron, origin);
+  };
+
+  export const registerReactive = <T, U = T>(config: ReactiveConfig<T, U>, origin: string) => {
+    const id = `reactive_${sanitize(origin)}`;
+    const emits = config.emits ?? [];
+
+    reactives.set(origin, {
+      id,
+      name: config.name,
+      description: config.description,
+      origin,
+      emits,
+    });
+
+    for (const topic of emits) {
+      recordEmit(topic, id);
+    }
   };
 
   export const registerSubscription = (topic: string, sourceId: string) => {

@@ -196,6 +196,10 @@ const countedEvent: EventConfig = {
 
 Each operator receives the full observable payload: for routes it is `{ req, res, ctx }`; for events it is `{ data, run, traceContext }`. Operators should return the stream—`rxpress` subscribes after your pipeline finishes. Leave `pipes` undefined if you do not need additional RxJS behaviour.
 
+### Reactive state watchers
+
+Need a global signal when in-memory state mutates? Pair `rxpress.state` with `rxpress.watch` to derive changes and run handlers without hand-wiring `Subject`s. Watchers share the same context helpers (`emit`, `kv`, `logger`), automatically receive a run scope (or respect the one you provide), and execute inside an OpenTelemetry span for correlation. See [`docs/reactive.md`](./reactive.md) for guidance on propagating run scopes, building operator pipelines, and applying telemetry links.
+
 ## Auto-loading by Convention
 
 Instead of registering handlers programmatically, supply directories that contain `*.handler.js`, `*.event.js`, or `*.cron.js` files. Each module should export a `config` object compatible with the respective type.

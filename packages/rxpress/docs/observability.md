@@ -38,7 +38,7 @@ metrics: {
 }
 ```
 
-Example spans include route names (e.g. `GET /api/v1/example`) and status codes. When routes emit events, the handler spans link back to the originating request via OpenTelemetry span links, giving backends such as Jaeger or Tempo enough context to render a dependency graph from HTTP → events → cron jobs.
+Example spans include route names (e.g. `GET /api/v1/example`) and status codes. When routes, cron jobs, or reactive watchers emit events, the handler spans link back to the originating mutation via OpenTelemetry span links, giving backends such as Jaeger or Tempo enough context to render a dependency graph from HTTP → reactive state → events → cron jobs.
 
 ## Logging Integration
 

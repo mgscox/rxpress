@@ -66,6 +66,7 @@ Optional middleware such as Helmet, cookie-based sessions, compression, or CORS 
 | [Getting Started](./docs/getting-started.md)   | Installation, adapters, bootstrapping, and auto-discovery patterns.               |
 | [Routing](./docs/routing.md)                   | API/HTTP routes, static files, SSE, cron jobs, and Next.js integration.           |
 | [Events](./docs/events.md)                     | Emitting and subscribing to domain events with shared context.                    |
+| [Reactive State](./docs/reactive.md)           | Mutate shared state, react with RxJS operators, and propagate run/span context.   |
 | [Cron](./docs/cron.md)                         | Scheduling background jobs, retries, and graceful shutdown.                       |
 | [gRPC handlers](./docs/grpc.md)                | Running routes/events over gRPC, multi-target registries, TLS, and health checks. |
 | [Route Documentation](./docs/documentation.md) | Generating OpenAPI specifications from routes and Zod schemas.                    |
