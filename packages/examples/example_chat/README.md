@@ -6,7 +6,7 @@ Minimal CLI chat demo built on the locally packed `rxpress` library. It starts a
 
 - Node.js 20+
 - OPENAI_API_KEY environment variable defined
-- A packed copy of the library (`packages/rxpress-0.1.0.tgz`)
+- `rxpress` built locally (`npm run build --workspace rxpress`)
 
 ## Install & run
 

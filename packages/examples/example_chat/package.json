@@ -11,7 +11,7 @@
     "dotenv": "^16.4.7",
     "openai": "^4.104.0",
     "ora": "^5.4.1",
-    "rxpress": "file:../../../rxpress-0.1.0.tgz",
+    "rxpress": "file:../../rxpress",
     "zod": "^4.1.12"
   },
   "devDependencies": {
