@@ -81,7 +81,7 @@ rxpress.init({
 });
 ```
 
-The example server (`packages/server/src/main.ts`) demonstrates combining these with telemetry and other options.
+The example server (`packages/examples/server/src/main.ts`) demonstrates combining these with telemetry and other options.
 
 ## gRPC bridge (polyglot handlers)
 

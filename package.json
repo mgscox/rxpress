@@ -2,7 +2,8 @@
   "name": "root",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/*/*"
   ],
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

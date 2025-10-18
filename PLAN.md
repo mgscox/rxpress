@@ -4,30 +4,30 @@ Always ensure this document remains up-to-date with progress
 
 ## Goals
 
-- [ ] Extract the reusable RxJS-driven web server stack from `packages/server` into `packages/rxpress`.
+- [ ] Extract the reusable RxJS-driven web server stack from `packages/examples/server` into `packages/rxpress`.
 - [ ] Ship a TypeScript-friendly package that external apps can consume via `npm i rxpress`.
-- [ ] Leave `packages/server` as a thin example/host that depends on the published library.
+- [ ] Leave `packages/examples/server` as a thin example/host that depends on the published library.
 
 ## Current Status Snapshot
 
 - `packages/rxpress/lib` already mirrors some server services but is incomplete (mixed `.ts` sources, no build pipeline, no exported entry point).
-- `packages/server` owns the production-ready implementations (`EventService`, `Logger`, `ConfigService`, RPC route/event definitions, CRON wiring).
+- `packages/examples/server` owns the production-ready implementations (`EventService`, `Logger`, `ConfigService`, RPC route/event definitions, CRON wiring).
 - Workspace tooling uses Nx + npm workspaces; there is no dedicated publish flow for `rxpress`.
 
 ## Phase 1 – Inventory & Hardening
 
-1. [x] **Audit server features:** catalogue route/event/cron helpers, metrics, logging, KV store expectations, and config contracts still living only in `packages/server`.
+1. [x] **Audit server features:** catalogue route/event/cron helpers, metrics, logging, KV store expectations, and config contracts still living only in `packages/examples/server`.
 2. [x] **Align TypeScript configs:** create `packages/rxpress/tsconfig.json` (emit to `dist/`, ES2022 target, declaration output) and add build/test scripts.
 3. [x] **Drop ad-hoc TS in `lib/`:** relocate sources to `src/` to match TS build output, keeping `.d.ts` generation in mind.
 
 ### Phase 1 Findings
 
-- [x] `packages/server/src/main.ts` orchestrates express server setup, dynamic loading of routes/events, and uses `ConfigService.__rootDir` plus `glob` to discover handlers.
+- [x] `packages/examples/server/src/main.ts` orchestrates express server setup, dynamic loading of routes/events, and uses `ConfigService.__rootDir` plus `glob` to discover handlers.
 - [x] Logging relies on `Logger` wrapping EventService (`app::log` topic) with env-driven levels; no equivalent concrete logger bundled in `rxpress`.
 - [x] `KVService` provides optional file persistence and seeds keys relative to `ConfigService.__rootDir`; `rxpress` exposes only `KVBase` interface without storage implementation.
 - [x] Events (`src/events/*.app-log.js`) demonstrate log sinks and expect `logger`/`trigger` context; cron wiring currently exists only in `packages/rxpress` (library) and is unused by server example.
 - [x] Metrics, process handlers, and OTEL setup live in `rxpress/lib/services/metrics.service.ts` but server `main.ts` still configures emits/topics manually; need unified bootstrap.
-- [x] Type declarations in `packages/server/src/types/rpc.ts` depend on concrete `Logger` and `KVService`; library variant already abstracts these via interfaces.
+- [x] Type declarations in `packages/examples/server/src/types/rpc.ts` depend on concrete `Logger` and `KVService`; library variant already abstracts these via interfaces.
 
 ## Phase 2 – Core Library Port
 
@@ -47,7 +47,7 @@ Always ensure this document remains up-to-date with progress
 7. [x] **Wire build tooling:** add `npm run build` to compile to `dist`, update `package.json` (`main`, `exports`, `types`, clean description, semver). Include `files: ["dist"]` and remove TypeScript sources from publish payload.
 8. [x] **Add tests/examples:** port existing smoke tests, add integration tests that spin up express app via library; document fixtures under `__tests__`.
 9. [x] **Update docs:** author README usage guide and migration notes; ensure AGENTS.md references new workflow if needed.
-10. [x] **Refactor `packages/server`:** replace local service imports with `rxpress` exports; keep only project-specific routes/events/config.
+10. [x] **Refactor `packages/examples/server`:** replace local service imports with `rxpress` exports; keep only project-specific routes/events/config.
 11. [x] **Provide wrapper bootstrap:** update server startup scripts to call `rxpress.init()`/`start()` instead of bespoke logic; confirm environment loading still works via new API.
 
 ### Phase 3 Progress

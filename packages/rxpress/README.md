@@ -57,7 +57,7 @@ rxpress.addEvents(events);
 rxpress.start().catch(console.error);
 ```
 
-Optional middleware such as Helmet, cookie-based sessions, compression, or CORS can be wired in with `rxpress.use(...)`; the [Getting Started guide](./docs/getting-started.md) shows both global and per-route patterns alongside the example server in `packages/server/src/main.ts`.
+Optional middleware such as Helmet, cookie-based sessions, compression, or CORS can be wired in with `rxpress.use(...)`; the [Getting Started guide](./docs/getting-started.md) shows both global and per-route patterns alongside the example server in `packages/examples/server/src/main.ts`.
 
 ## Documentation
 
@@ -77,7 +77,7 @@ Optional middleware such as Helmet, cookie-based sessions, compression, or CORS 
 
 ## Example Project
 
-The repository ships an opinionated example server under [`packages/server`](../server). It demonstrates:
+The repository ships an opinionated example server under [`packages/examples/server`](../examples/server). It demonstrates:
 
 - Programmatic registration + auto-discovery of routes
 - Static asset delivery

@@ -8,7 +8,7 @@ To get the project started quickly, you can follow these steps.
 
 1. Run `npm install` at the repository root.
 2. Execute `npm run lint` and `npm test --workspace rxpress` before proposing changes.
-3. Library documentation belongs in [`packages/rxpress/docs`](./packages/rxpress/docs); example application improvements should live under [`packages/server`](./packages/server).
+3. Library documentation belongs in [`packages/rxpress/docs`](./packages/rxpress/docs); example application improvements should live under [`packages/examples/server`](./packages/examples/server).
 
 ## Report a bug or requesting feature
 

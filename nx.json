@@ -3,6 +3,6 @@
   "npmScope": "newintel",
   "targetDefaults": {},
   "projects": {
-    "server": "packages/server"
+    "server": "packages/examples/server"
   }
 }

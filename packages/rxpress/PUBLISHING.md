@@ -22,5 +22,5 @@
 
 6. **Post-Release**
    - Tag the commit `git tag vX.Y.Z` and push tags.
-   - Update `packages/server` dependency to the published version and run regression tests.
+   - Update `packages/examples/server` dependency to the published version and run regression tests.
    - Announce release notes (Slack, GitHub Releases, etc.).

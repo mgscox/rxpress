@@ -3,12 +3,12 @@
 ## Project Structure & Module Organization
 
 - `packages/rxpress`: ESM library source under `src/` with helper adapters in `src/helpers`, build artefacts emitted to `dist/`, and smoke/integration tests in `__tests__/`.
-- `packages/server`: Example host application showing how to consume `rxpress`; server-specific adapters live in `src/services`, and events are defined in `src/events/*.event.js`.
+- `packages/examples/server`: Example host application showing how to consume `rxpress`; server-specific adapters live in `src/services`, and events are defined in `src/events/*.event.js`.
 - Workspace tooling (`package.json`, `nx.json`, `lerna.json`) orchestrates shared scripts—run commands from the repo root unless noted.
 
 ## Build, Test, and Development Commands
 
-- Install dependencies once via `npm install` (root). Use `npm run build --workspace rxpress` to compile the library and `npm run build` inside `packages/server` to emit its TypeScript output.
+- Install dependencies once via `npm install` (root). Use `npm run build --workspace rxpress` to compile the library and `npm run build` inside `packages/examples/server` to emit its TypeScript output.
 - Execute all library tests with `npm test --workspace rxpress`; the suite covers helper examples, HTTP routing, and cron/event orchestration.
 - Example server: develop with `npx nx run server:dev`, build using `npm run build --workspace @newintel/server`, and start compiled output via `npm run start --workspace @newintel/server`.
 

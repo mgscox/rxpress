@@ -4,10 +4,10 @@ This repository hosts the `rxpress` runtime library together with a reference ap
 
 ## Packages
 
-| Package                                  | Description                                                                                                                                            |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`packages/rxpress`](./packages/rxpress) | Published npm module that exposes the `rxpress` orchestration API, helper adapters, and TypeScript definitions.                                        |
-| [`packages/server`](./packages/server)   | Example host that consumes the library, wires in logger/KV adapters, demonstrates routing patterns, and streams telemetry to OpenTelemetry collectors. |
+| Package                                                  | Description                                                                                                                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`packages/rxpress`](./packages/rxpress)                 | Published npm module that exposes the `rxpress` orchestration API, helper adapters, and TypeScript definitions.                                        |
+| [`packages/examples/server`](./packages/examples/server) | Example host that consumes the library, wires in logger/KV adapters, demonstrates routing patterns, and streams telemetry to OpenTelemetry collectors. |
 
 ## Getting Started
 

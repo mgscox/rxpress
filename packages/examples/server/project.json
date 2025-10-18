@@ -1,13 +1,13 @@
 {
-  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "name": "server",
   "projectType": "application",
-  "sourceRoot": "packages/server/src",
+  "sourceRoot": "packages/examples/server/src",
   "targets": {
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "packages/server",
+        "cwd": "packages/examples/server",
         "command": "npm run dev"
       }
     }

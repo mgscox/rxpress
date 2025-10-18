@@ -19,7 +19,7 @@
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "rxjs": "^7.8.2",
-    "rxpress": "file:../rxpress",
+    "rxpress": "file:../../rxpress",
     "server": "^1.0.42",
     "zod": "^4.1.11"
   },
