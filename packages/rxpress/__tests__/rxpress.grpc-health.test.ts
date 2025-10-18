@@ -120,6 +120,7 @@ await (async () => {
   assert.equal(body.echo?.body?.hello, 'world');
 
   await rxpress.stop().catch(() => {});
+  console.info('rxpress.grpc-health run tests passed');
 })().catch((err) => {
   console.error(err);
   process.exitCode = 1;
