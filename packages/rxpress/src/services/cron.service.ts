@@ -11,6 +11,7 @@ import { MetricService } from './metrics.service.js';
 
 export namespace CronService {
   const jobs: CronJob[] = [];
+  const taskQueues = new WeakMap<CronConfig, Promise<void>>();
 
   async function executeWithRetry(cron: CronConfig, ctx: { logger: Logger; kv: KVBase }) {
     const {
@@ -95,7 +96,7 @@ export namespace CronService {
           start: true,
           timeZone: cron.timeZone,
           onTick: () => {
-            void executeWithRetry(cron, { logger, kv });
+            scheduleExecution(cron, { logger, kv });
           },
         }),
       );
@@ -105,4 +106,23 @@ export namespace CronService {
   export const close = () => {
     jobs.forEach((job) => job.stop());
   };
+
+  function scheduleExecution(cron: CronConfig, ctx: { logger: Logger; kv: KVBase }) {
+    const previous = taskQueues.get(cron) ?? Promise.resolve();
+    const next = previous
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await executeWithRetry(cron, ctx);
+        }
+        catch (error) {
+          ctx.logger.error?.('Cron execution failed outside retry loop', {
+            error: `${error}`,
+            cron: cron.cronTime,
+          });
+        }
+      });
+
+    taskQueues.set(cron, next);
+  }
 }
