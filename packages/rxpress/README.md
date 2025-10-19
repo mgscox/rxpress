@@ -72,6 +72,7 @@ Optional middleware such as Helmet, cookie-based sessions, compression, or CORS 
 | [Route Documentation](./docs/documentation.md) | Generating OpenAPI specifications from routes and Zod schemas.                    |
 | [Adapters](./docs/adapters.md)                 | Building logger/KV adapters and reusing the helper implementations.               |
 | [Realtime](./docs/realtime.md)                 | WebSockets and server-sent events.                                                |
+| [Clustering](./docs/clustering.md)             | Running multiple workers, sticky sessions, and cluster-wide broadcasts.           |
 | [Next.js](./docs/nextjs.md)                    | Serving Next apps alongside RPC routes, custom hooks, and testing strategies.     |
 | [Observability](./docs/observability.md)       | OpenTelemtry Metrics, tracing, and the exmple local Grafana/Jaeger stack.         |
 

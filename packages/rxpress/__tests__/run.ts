@@ -4,6 +4,7 @@ const tests = [
   './rxpress.test.ts',
   './rxpress.integration.test.ts',
   './rxpress.wss.test.ts',
+  './rxpress.cluster.test.ts',
   './rxpress.sse.test.ts',
   './rxpress.cron.test.ts',
   './rxpress.cron-retry.test.ts',
@@ -19,13 +20,35 @@ const tests = [
   './readme-example.test.ts',
 ];
 
-const options = process.argv.slice(2) || []
+const options = process.argv.slice(2) || [];
+
+const isPermissionError = (error: unknown) => {
+  if (typeof error === 'string') {
+    return error.includes('EPERM') || error.includes('EACCES');
+  }
+
+  if (error instanceof Error) {
+    return /EPERM|EACCES/.test(error.message);
+  }
+
+  return false;
+};
 
 async function run() {
   for (const test of tests) {
-    if (!options.length || options.includes( path.basename(test) )) {
+    if (!options.length || options.includes(path.basename(test))) {
       // Sequential imports keep side effects ordered (e.g., server start/stop).
-      await import(test);
+      try {
+        await import(test);
+      }
+      catch (error) {
+        if (isPermissionError(error)) {
+          console.warn(`[rxpress] ${test} skipped due to listen permissions`);
+          continue;
+        }
+
+        throw error;
+      }
     }
   }
 }

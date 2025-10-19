@@ -86,7 +86,7 @@ await (async () => {
     throw error;
   }
 
-  const { server } = startResult;
+  const { server } = startResult || {};
 
   try {
     const address = server.address();

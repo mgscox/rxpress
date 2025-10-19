@@ -113,6 +113,7 @@ await (async () => {
 })()
   .catch((error) => {
     console.error('[grpc-discovery-test] failed', error);
+    console.log(logs.join(`\n`))
     process.exitCode = 1;
   })
   .finally(() => {

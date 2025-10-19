@@ -6,6 +6,7 @@ import type { MetricsConfig } from './metrics.types.js';
 import type { NextAdapterConfig } from './next.types.js';
 import type { DocumentationConfig } from './documentation.types.js';
 import type { GrpcConfig } from './grpc.types.js';
+import type { ClusterConfig } from './cluster.types.js';
 
 type JsonOptions = Parameters<typeof json>[0];
 
@@ -31,6 +32,7 @@ export type RxpressConfig = {
     path: string;
   };
   grpc?: GrpcConfig;
+  cluster?: ClusterConfig;
 };
 export type RxpressStartConfig = {
   eventDir?: string;

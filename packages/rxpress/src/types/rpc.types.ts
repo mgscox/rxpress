@@ -102,6 +102,7 @@ export type EventContext = {
   kvPath: KVPath;
   emit: Emit;
   run?: RunContext;
+  traceContext?: SpanContext;
 };
 export type EventFunction<T = unknown> = (input: T, ctx: EventContext) => MaybePromise<void>;
 type EventConfigCommon<T> = {

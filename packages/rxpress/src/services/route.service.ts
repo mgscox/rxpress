@@ -16,6 +16,7 @@ import { createRun as createRunScope, releaseRun as releaseRunScope } from './ru
 import { DocumentationService } from './documentation.service.js';
 import { GrpcBridgeService } from './grpc.service.js';
 import type { GrpcInvokeBinding } from '../types/grpc.types.js';
+import type { ServiceError } from '@grpc/grpc-js';
 
 export namespace RouteService {
   const pubs$: Record<string, Subject<RPCContext>> = {};
@@ -359,12 +360,25 @@ export namespace RouteService {
             throw new Error('gRPC bridge not initialised – enable rxpress config.grpc to use kind:"grpc" routes.');
           }
 
-          const invokeResult = await GrpcBridgeService.invoke({
-            binding: route.grpc,
-            method: route.type,
-            input: buildGrpcInput(req),
-            meta: buildGrpcMeta(route, req, run.id, span),
-          });
+          let invokeResult;
+
+          try {
+            invokeResult = await GrpcBridgeService.invoke({
+              binding: route.grpc,
+              method: route.type,
+              input: buildGrpcInput(req),
+              meta: buildGrpcMeta(route, req, run.id, span),
+            });
+          }
+          catch (error) {
+            logger.error?.('[rxpress.grpc] invoke failed', {
+              path: route.path,
+              error: error instanceof Error ? error.message : error,
+              code: (error as ServiceError)?.code,
+              details: (error as ServiceError)?.details,
+            });
+            throw error;
+          }
 
           const payload = isRecord(invokeResult.output) ? invokeResult.output : {};
           result = normalizeGrpcResult(route, res, payload);

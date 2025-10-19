@@ -1,9 +1,11 @@
 import express, { type RequestHandler, type ErrorRequestHandler } from 'express';
 import http from 'node:http';
+import type { Server as NetServer } from 'node:net';
 import { pathToFileURL } from 'node:url';
 import { globSync } from 'glob';
 import helmet from 'helmet';
 import session from 'cookie-session';
+import type { Socket } from 'socket.io';
 
 import {
   CronConfig,
@@ -12,7 +14,6 @@ import {
   RxpressConfig,
   Logger,
   KVBase,
-  BufferLike,
   HelmetOptions,
   RxpressStartConfig,
   ReactiveConfig,
@@ -30,21 +31,25 @@ import { TopologyService } from './services/topology.service.js';
 import { GrpcBridgeService } from './services/grpc.service.js';
 import { ReactiveService } from './services/reactive.service.js';
 import { createKVPath } from './services/kv-path.service.js';
+import { ClusterService } from './services/cluster.service.js';
+import { simplelLogger } from './helpers/simple-logger.service.js';
 
 const createHelmetMiddleware = helmet as unknown as (options?: HelmetOptions) => RequestHandler;
 
 export namespace rxpress {
   let app: express.Express | null = null;
   let server: http.Server | null = null;
-  let activeLogger: Logger | null = null;
+  let activeWss: WSSService | null = null;
+  let activeLogger: Logger | null = simplelLogger;
   let activeKv: KVBase | null = null;
   let activeConfig: RxpressConfig | null = null;
-  let hostname = '0.0.0.0';
+  let hostname = '127.0.0.1';
   let nextReady: Promise<void> | undefined;
   let inlineRouteCounter = 0;
   let inlineEventCounter = 0;
   let inlineCronCounter = 0;
   let inlineReactiveCounter = 0;
+  let wssBroadcastRegistered = false;
 
   const ensureInitialized = () => {
     if (!app || !activeLogger || !activeKv || !activeConfig) {
@@ -58,7 +63,7 @@ export namespace rxpress {
     activeConfig = config;
     activeLogger = logger;
     activeKv = kv;
-    hostname = config.hostname || hostname;
+    hostname = config.hostname ?? (config.cluster ? '0.0.0.0' : '127.0.0.1');
     TopologyService.clear();
 
     if (config.rootDir) {
@@ -70,6 +75,7 @@ export namespace rxpress {
     }
 
     DocumentationService.configure(config.documentation);
+    ClusterService.configure(config.cluster);
     GrpcBridgeService.init({ config: config.grpc, logger, kv, emit: EventService.emit });
 
     if (config.metrics) {
@@ -118,9 +124,46 @@ export namespace rxpress {
     (app!.use as unknown as (...params: unknown[]) => express.Express).apply(app, args);
   }
 
-  export function createServer(port = 3000): Promise<{ server: http.Server; port: number }> {
+  export function createServer(port = 3000): Promise<{ server: http.Server | NetServer; port: number }> {
     ensureInitialized();
     const listenPort = activeConfig?.port ?? port;
+
+    if (ClusterService.shouldUseCluster()) {
+      if (ClusterService.isPrimaryProcess()) {
+        activeLogger?.debug(`[rpxress] Starting Primary on port ${hostname}:${listenPort}`)
+        return ClusterService.startPrimary({
+          port: listenPort,
+          hostname,
+          logger: activeLogger!,
+        });
+      }
+
+      return ClusterService.startWorker({
+        port: listenPort,
+        hostname,
+        logger: activeLogger!,
+        createHttpServer: async (workerId: string) => {
+          activeLogger?.debug(`[rpxress] Starting Worker ${workerId} on port ${hostname}:${listenPort}`);
+
+          if (nextReady) {
+            await nextReady;
+          }
+
+          await GrpcBridgeService.ready();
+
+          server = http.createServer(app!);
+          activeWss = new WSSService({ server, path: activeConfig?.wsPath, logger: activeLogger! });
+          registerBroadcastEvent();
+          server.on('error', (error) => {
+            activeLogger?.error?.(`[rxpress] worker ${workerId} server error`, { error: `${error}` });
+          });
+          return new Promise(resolve => {
+            server?.once('listening', () => resolve({ server: server!, wss: activeWss! }));
+            server?.listen()
+          })
+        },
+      });
+    }
 
     return new Promise((resolve, reject) => {
       const bootstrap = async () => {
@@ -129,29 +172,21 @@ export namespace rxpress {
             await nextReady;
           }
 
+          await GrpcBridgeService.ready();
+
           server = http.createServer(app!);
           server.on('error', reject);
           server.on('listening', () => {
             resolve({ server: server!, port: listenPort });
           });
-          WSSService.createWs(server, activeConfig?.wsPath);
-          server.listen(listenPort, hostname);
-          const wssBroadcastEvent: EventConfig = {
-            subscribe: ['SYS::WSS::BROADCAST'],
-            handler: async (input: unknown) => {
-              const payload = (input === typeof 'BufferLike')
-                ? <BufferLike>input
-                : JSON.stringify(input);
-              WSSService.broadcast(payload);
-            },
-          };
+          activeWss = new WSSService({ server, path: activeConfig?.wsPath, logger: activeLogger! });
 
-          TopologyService.registerEvent(wssBroadcastEvent, 'internal:wss-broadcast');
-          EventService.add(wssBroadcastEvent, {
-            logger: activeLogger!,
-            kv: activeKv!,
-            emit: EventService.emit,
-          });
+          if (!activeWss) {
+            throw `WSS not successfully initialised`
+          }
+
+          registerBroadcastEvent();
+          server.listen(listenPort, hostname);
         }
         catch (error) {
           reject(error);
@@ -208,6 +243,53 @@ export namespace rxpress {
     else {
       throw new Error(`(CRON) Missing configuration export: ${file}`);
     }
+  }
+
+  function registerBroadcastEvent() {
+    if (wssBroadcastRegistered || EventService.has('SYS::WSS::BROADCAST')) {
+      return;
+    }
+
+    const wssBroadcastEvent: EventConfig<{ payload?: unknown; exclude?: Socket[] }> = {
+      subscribe: ['SYS::WSS::BROADCAST'],
+      handler: async (input, ctx) => {
+        const payload = input && typeof input === 'object' && 'payload' in input
+          ? (input as { payload?: unknown }).payload
+          : input;
+        const exclude = input && typeof input === 'object' && 'exclude' in input
+          ? (input as { exclude?: Socket[] }).exclude
+          : undefined;
+
+        if (!activeWss) {
+          if (ClusterService.shouldUseCluster() && ClusterService.isPrimaryProcess()) {
+            const excludeIds = exclude?.map((socket) => socket.id).filter((id): id is string => Boolean(id));
+            ClusterService.dispatchBroadcast(payload, {
+              traceContext: ctx.traceContext,
+              excludeIds,
+            });
+            return;
+          }
+
+          activeLogger?.warn?.('[rxpress] SYS::WSS::BROADCAST invoked without active websocket server', {payload});
+          return;
+        }
+
+        activeWss.broadcast({
+          payload,
+          exclude,
+          traceContext: ctx.traceContext,
+        });
+      },
+    };
+
+    TopologyService.registerEvent(wssBroadcastEvent, 'internal:wss-broadcast');
+    EventService.add(wssBroadcastEvent, {
+      logger: activeLogger!,
+      kv: activeKv!,
+      emit: EventService.emit,
+    });
+
+    wssBroadcastRegistered = true;
   }
 
   export async function loadEvents(eventDir: string) {
@@ -276,7 +358,7 @@ export namespace rxpress {
     }
   }
 
-  export async function start(param: RxpressStartConfig) {
+  export async function start(param: RxpressStartConfig = {}) {
     const {validateEvents = true, port} = param;
     await load(param);
 
@@ -314,6 +396,11 @@ export namespace rxpress {
 
   export async function stop(critical = false): Promise<void> {
     EventService.emit({ topic: 'SYS::SHUTDOWN', data: { critical } });
+
+    if (ClusterService.shouldUseCluster() && ClusterService.isPrimaryProcess()) {
+      await ClusterService.stop();
+    }
+
     EventService.close();
     RouteService.close();
     CronService.close();
@@ -327,7 +414,8 @@ export namespace rxpress {
 
     DocumentationService.reset();
 
-    WSSService.close();
+    activeWss?.close();
+    activeWss = null;
     server?.close();
     server = null;
   }

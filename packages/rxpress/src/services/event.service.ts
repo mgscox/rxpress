@@ -138,6 +138,7 @@ export namespace EventService {
                     kvPath,
                     emit: emitForHandler,
                     run,
+                    traceContext: span.spanContext(),
                   });
 
                   await Promise.resolve(result);

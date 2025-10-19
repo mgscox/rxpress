@@ -1,6 +1,8 @@
 # Realtime Features
 
 `rxpress` supports two complementary realtime transports: WebSockets and Server-Sent Events (SSE).
+When clustering is enabled, Socket.IO keeps WebSocket clients sticky across
+workers and broadcasts remain cluster-wide (see [Clustering](./clustering.md)).
 
 ## WebSockets
 

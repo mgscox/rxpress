@@ -446,8 +446,7 @@ async function startServer(): Promise<void> {
       const host = bindAddress.includes(':') ? bindAddress.split(':')[0] : '0.0.0.0';
       const resolvedHost = host === '0.0.0.0' ? '127.0.0.1' : host;
       state.target = state.config?.target ?? `${resolvedHost}:${port}`;
-      // server.start(); // depreciated - not required
-      state.logger?.info?.('gRPC bridge server listening', { target: state.target });
+      state.logger?.debug('gRPC bridge server listening', { target: state.target });
       resolve();
     });
   });
@@ -876,6 +875,7 @@ export namespace GrpcBridgeService {
         state.target = config.target;
       }
 
+      console.debug(`[gRPC] state.target`, state.target)
       state.initialized = true;
     };
 
@@ -889,6 +889,12 @@ export namespace GrpcBridgeService {
 
   export function isEnabled(): boolean {
     return state.initialized && !!state.grpcPackage;
+  }
+
+  export async function ready(): Promise<void> {
+    if (state.ready) {
+      await state.ready.catch(() => {});
+    }
   }
 
   export async function invoke(param: { binding: GrpcInvokeBinding; method: string; input?: Record<string, unknown>; meta?: Record<string, unknown>; }): Promise<InvokeResult> {
@@ -960,6 +966,13 @@ export namespace GrpcBridgeService {
     return new Promise<InvokeResult>((resolve, reject) => {
       const callback = (error: grpc.ServiceError | null, response: any) => {
         if (error) {
+          const details = {
+            target: endpoint.target ?? state.target ?? state.config?.target,
+            code: (error as grpc.ServiceError).code,
+            details: (error as grpc.ServiceError).details,
+            message: error.message,
+          };
+          state.logger?.error?.('grpc.invoke.error', details);
           reject(error);
           return;
         }
@@ -967,6 +980,12 @@ export namespace GrpcBridgeService {
         const status = response?.status ?? { code: 0 };
 
         if (status.code !== 0) {
+          const details = {
+            target: endpoint.target ?? state.target ?? state.config?.target,
+            status,
+          };
+          state.logger?.error?.('grpc.invoke.status', details);
+          console.error('[grpc.invoke.status]', details);
           const err = new Error(status.message ?? 'gRPC invocation failed');
           reject(err);
           return;

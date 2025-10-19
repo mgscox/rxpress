@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
-import { Buffer } from 'node:buffer';
-import WebSocket from 'ws';
+import { io as createClient, type Socket } from 'socket.io-client';
 
 import { rxpress } from '../src/rxpress.js';
 import type { EventConfig, KVBase, Logger, LogLogger } from '../src/types/index.js';
@@ -101,15 +100,19 @@ await (async () => {
 
     await delay(25);
 
-    const client = new WebSocket(`ws://127.0.0.1:${port}/`);
+    const client: Socket = createClient(`ws://127.0.0.1:${port}`, {
+      transports: ['websocket'],
+      forceNew: true,
+      timeout: 1_000,
+    });
 
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('WebSocket open timeout')), 1_000);
-      client.once('open', () => {
+      const timer = setTimeout(() => reject(new Error('Socket.IO open timeout')), 1_000);
+      client.once('connect', () => {
         clearTimeout(timer);
         resolve();
       });
-      client.once('error', (error) => {
+      client.once('connect_error', (error) => {
         clearTimeout(timer);
         reject(error);
       });
@@ -119,44 +122,16 @@ await (async () => {
     assert.equal(connectionEvents.length, 1, 'expected SYS::WSS::CONNECTION event');
 
     const pingPayload = { path: 'ping', message: 'hello' };
-    client.send(JSON.stringify(pingPayload));
+    client.emit('message', pingPayload);
 
     await delay(25);
-
+    
     assert.equal(messageEvents.length, 1, 'expected SYS::WSS::MESSAGE event');
     const routedEvent = routedEvents.at(0) as { data?: unknown } | undefined;
-    assert.ok(routedEvent, 'expected SYS::WSS::ROUTE::ping event');
-    const message = routedEvent?.data as unknown;
-    const receivedString = (() => {
-      if (!message) {
-        return '';
-      }
-
-      if (typeof message === 'string') {
-        return message;
-      }
-
-      if (Buffer.isBuffer(message)) {
-        return message.toString();
-      }
-
-      if (message instanceof ArrayBuffer) {
-        return Buffer.from(message).toString();
-      }
-
-      if (Array.isArray(message)) {
-        return Buffer.concat(
-          message.map((part) => (Buffer.isBuffer(part) ? part : Buffer.from(part as ArrayBuffer))),
-        ).toString();
-      }
-
-      if (ArrayBuffer.isView(message)) {
-        return Buffer.from(message.buffer).toString();
-      }
-
-      return Buffer.from(`${message}`).toString();
-    })();
-    assert.ok(receivedString.includes('"message":"hello"'));
+    assert.ok(!!routedEvent, 'expected SYS::WSS::ROUTE::ping event');
+    const payload = routedEvent?.data as unknown as {path?: string, message?: string};
+    assert.equal(payload?.path, 'ping', 'Expected path of "ping"')
+    assert.ok(payload.message?.includes('hello'));
 
     client.close();
     await delay(20);

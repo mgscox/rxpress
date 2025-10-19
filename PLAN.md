@@ -113,3 +113,45 @@ Always ensure this document remains up-to-date with progress
 - Decide how much telemetry/metrics functionality is core vs optional to keep install size reasonable.
 - Document Node.js version requirement (Node 20+) and any peer dependencies (e.g., `express`, `rxjs`).
 - Plan for backwards compatibility if external consumers expect existing server behavior; provide migration notes or wrappers.
+
+## Phase 6 – Clustered Runtime
+
+Cluster Rollout Plan
+
+- Config & Initialization
+  services always see { enabled: boolean; workers: number; hashSelectors: [...] }.
+  - Update packages/rxpress/src/types to expose the new config, and add validation so values ≤0 fall back to CPU count.
+- ClusterService (Primary Role)
+  - Create ClusterService.start(config) invoked from rxpress.createServer when worker count > 1.
+  - Primary responsibilities:
+    - Fork N workers, track PIDs, restart on exit if restartOnExit !== false.
+    - Stand up a lightweight TCP server (sticky server) bound to the configured WS port. On connection, inspect headers for x-forwarded-for first, else use socket.remoteAddress, hash to worker index, and hand off the socket via
+      worker.send({ type: 'sticky-connection' }, socket).
+    - Forward OS signals (SIGINT/SIGTERM) to workers, await “shutdown-complete” acknowledgements, then close dispatcher and exit.
+    - Emit topology/trace events (SYS::CLUSTER::\*) for observability.
+- Worker Bootstrap Path
+  - Workers run existing Express HTTP server as-is; when notified (process.on('message')) of a sticky upgrade, recreate the upgrade by calling a new WSSService.attachSocket({ request, socket, head }).
+  - Ensure workers register WSSService.configureClusterBridge({ workerId, sendToPrimary }) so broadcasts can loop through the primary.
+- Broadcast Fan-out & Trace Preservation
+  - Keep SYS::WSS::BROADCAST event handler per worker; modifies WSSService.publish to:
+    - Dispatch locally.
+    - Send serialized envelopes to primary when origin is worker.
+  - Primary listens on WSSService.onPublish (registered within ClusterService) to rebroadcast envelopes to all other workers, preserving traceContext and skipping the origin worker.
+- Lifecycle & Health
+  - Workers send READY/SHUTDOWN messages; primary maintains a map to support graceful stop and restarts.
+  - Incorporate restart throttling (e.g., max restarts in 1 min) to avoid thrash.
+- Stateless HTTP Handling
+  - HTTP requests continue to use Node’s server.listen per worker (SO_REUSEPORT) since stateless behavior is acceptable; sticky dispatcher only handles WS upgrades to maintain session affinity.
+- Documentation & Tests
+  - Update PLAN.md Phase 6 checklist as milestones complete.
+  - Add docs: new cluster.md in docs/, README section, and example server configuration snippet.
+  - Write integration test (skippable if clustering unsupported) that starts 2-worker cluster, broadcasts from worker A, asserts worker B receives via bridge.
+  - Adjust existing tests to account for new config defaults.
+- [x] Add cluster configuration block (worker count, dispatcher strategy, graceful shutdown).
+- [x] Introduce startCluster/stopCluster orchestration within `rxpress.createServer`/`rxpress.stop` (primary vs worker roles).
+- [x] Implement primary net dispatcher for sticky sockets (or SO_REUSEPORT fallback).
+- [x] Replace direct WebSocket writes with RxJS broadcast subject.
+- [x] Route broadcasts through EventService.emit to retain span/run context.
+- [x] Fan-out payloads from primary to workers and handle worker-side delivery.
+- [x] Ensure graceful shutdown (signal forwarding, acknowledgements).
+- [ ] Document clustering usage and update example server to showcase it.
