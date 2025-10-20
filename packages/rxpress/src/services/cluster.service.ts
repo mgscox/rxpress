@@ -1,7 +1,6 @@
 import cluster, { type Worker } from 'node:cluster';
 import http from 'node:http';
 import os from 'node:os';
-import type { Signals } from 'node:process';
 import type { SpanContext } from '@opentelemetry/api';
 
 import { setupMaster, setupWorker } from '@socket.io/sticky';
@@ -48,6 +47,7 @@ type StickySocketIO = {
 }
 
 type PrimaryWorkerMessage = (PrimaryShutdownMessage | PrimaryBroadcastDispatchMessage | StickySocketIO) & {source?: string}
+type GracefulSignal = 'SIGINT' | 'SIGTERM';
 
 type PrimaryOptions = {
   port: number;
@@ -318,7 +318,7 @@ function setupSignalHandlers(logger: Logger) {
     return;
   }
 
-  const handler = (signal: Signals) => {
+  const handler = (signal: GracefulSignal) => {
     logger.info?.(`[rxpress] primary received ${signal}; initiating graceful cluster shutdown`);
     initiateShutdown();
   };
