@@ -219,7 +219,7 @@ function fromProtoMap(map: Record<string, Record<string, unknown>> | undefined):
 
 function ensureInitialized(): void {
   if (!state.initialized || !state.grpcPackage) {
-    throw new Error('gRPC bridge not initialised – enable `config.grpc` before using kind:"grpc" handlers.');
+    throw new Error('gRPC bridge not initialised - enable `config.grpc` before using kind:"grpc" handlers.');
   }
 }
 
