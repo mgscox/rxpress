@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package sentiment;
+
+// Placeholder proto. Actual message/service definitions will be added during implementation.
+
+service SentimentService {
+  rpc Analyse (AnalyseRequest) returns (AnalyseResponse);
+}
+
+message AnalyseRequest {
+  string text = 1;
+  string language_hint = 2;
+}
+
+message SentimentBreakdown {
+  string sentence = 1;
+  double score = 2;
+}
+
+message AnalyseResponse {
+  string detected_language = 1;
+  double polarity = 2;
+  double confidence = 3;
+  repeated SentimentBreakdown breakdown = 4;
+  string provider = 5;
+}

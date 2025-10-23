@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml_sentiment_service"
+version = "0.1.0"
+description = "Python gRPC sentiment analysis service for the rxpress multi-language example"
+requires-python = ">=3.10"
+dependencies = [
+    "grpcio>=1.66.0",
+    "grpcio-tools>=1.66.0",
+    "protobuf>=5.27.0",
+    "langdetect>=1.0.9",
+    "textblob>=0.17.1",
+    "ruff>=0.6.0",
+    "pytest>=8.3.3"
+]
+
+[project.optional-dependencies]
+dev = ["mypy>=1.11.0"]

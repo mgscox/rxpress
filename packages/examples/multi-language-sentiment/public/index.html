@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-language Sentiment Demo</title>
+    <style>
+      :root {
+        font-family: system-ui, sans-serif;
+        color-scheme: light dark;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, rgba(56, 189, 248, 0.15), transparent 65%), #0f172a;
+        color: #f8fafc;
+      }
+
+      .app {
+        width: min(720px, 100%);
+        background: rgba(15, 23, 42, 0.85);
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 2rem;
+        box-shadow: 0 30px 80px -40px rgba(15, 23, 42, 0.9);
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.8rem;
+      }
+
+      form {
+        display: grid;
+        gap: 1rem;
+      }
+
+      textarea, input {
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        background: rgba(15, 23, 42, 0.6);
+        color: inherit;
+        resize: vertical;
+      }
+
+      button {
+        background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+        border: none;
+        padding: 0.8rem 1.8rem;
+        border-radius: 999px;
+        font-weight: 600;
+        color: #0f172a;
+        cursor: pointer;
+      }
+
+      pre {
+        background: rgba(15, 23, 42, 0.7);
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 0;
+        overflow-x: auto;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Multi-language Sentiment Demo</h1>
+        <p>Text is forwarded to a Python gRPC service through rxpress.</p>
+      </header>
+
+      <form id="sentiment-form">
+        <label>
+          <span>Text</span>
+          <textarea id="text" name="text" rows="4" placeholder="Type something in any language..."></textarea>
+        </label>
+        <label>
+          <span>Language hint (optional, e.g. en, es)</span>
+          <input id="language" name="language" placeholder="auto" />
+        </label>
+        <button type="submit">Analyse</button>
+        <p id="error" class="hidden" role="alert"></p>
+      </form>
+
+      <section id="result" class="hidden">
+        <h2>Result</h2>
+        <pre id="result-json"></pre>
+      </section>
+    </div>
+
+    <script type="module">
+      const form = document.getElementById('sentiment-form');
+      const textField = document.getElementById('text');
+      const languageField = document.getElementById('language');
+      const errorEl = document.getElementById('error');
+      const resultSection = document.getElementById('result');
+      const resultJson = document.getElementById('result-json');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorEl.classList.add('hidden');
+        resultSection.classList.add('hidden');
+
+        const payload = {
+          text: textField.value.trim(),
+          language: languageField.value.trim() || undefined,
+        };
+
+        if (!payload.text) {
+          errorEl.textContent = 'Please enter some text to analyse.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/sentiment', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const problem = await response.json().catch(() => ({}));
+            throw new Error(problem.message || 'Request failed');
+          }
+
+          const result = await response.json();
+          resultJson.textContent = JSON.stringify(result, null, 2);
+          resultSection.classList.remove('hidden');
+        } catch (error) {
+          errorEl.textContent = error instanceof Error ? error.message : 'Unknown error';
+          errorEl.classList.remove('hidden');
+        }
+      });
+    </script>
+  </body>
+</html>
