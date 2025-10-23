@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Deep Research (rxpress)</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f172a;
+        --bg-card: rgba(15, 23, 42, 0.9);
+        --fg: #f8fafc;
+        --accent: #38bdf8;
+        --accent-strong: #0ea5e9;
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top, rgba(56, 189, 248, 0.15), transparent 55%),
+          radial-gradient(circle at bottom, rgba(59, 130, 246, 0.12), transparent 60%), var(--bg);
+        color: var(--fg);
+        min-height: 100vh;
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        padding: 3rem 1.5rem;
+      }
+
+      .app-shell {
+        width: min(1100px, 100%);
+        display: grid;
+        gap: 1.75rem;
+      }
+
+      header {
+        text-align: center;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: clamp(2rem, 3vw, 2.75rem);
+        letter-spacing: -0.02em;
+      }
+
+      header p {
+        margin: 0.75rem auto 0;
+        max-width: 720px;
+        line-height: 1.6;
+        color: rgba(248, 250, 252, 0.75);
+      }
+
+      .card {
+        background: var(--bg-card);
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        backdrop-filter: blur(18px);
+        padding: 1.75rem;
+        box-shadow: 0 20px 70px -30px rgba(15, 23, 42, 0.8);
+      }
+
+      form {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .field-group {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      label {
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+
+      textarea,
+      input {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        color: inherit;
+        padding: 0.85rem 1rem;
+        border-radius: 14px;
+        font-size: 1rem;
+        transition: border 0.2s ease, background 0.2s ease;
+      }
+
+      textarea:focus,
+      input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: rgba(30, 41, 59, 0.9);
+      }
+
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+
+      button[type="submit"] {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: #0b1120;
+        border: none;
+        padding: 0.9rem 1.75rem;
+        font-weight: 700;
+        font-size: 1rem;
+        border-radius: 999px;
+        cursor: pointer;
+        justify-self: flex-start;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 10px 30px rgba(56, 189, 248, 0.35);
+      }
+
+      button[type="submit"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 38px rgba(14, 165, 233, 0.45);
+      }
+
+      button[type="submit"]:disabled {
+        opacity: 0.6;
+        cursor: progress;
+        transform: none;
+      }
+
+      .status-card {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.4rem 0.85rem;
+        border-radius: 999px;
+        background: rgba(56, 189, 248, 0.18);
+        color: rgba(125, 211, 252, 1);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+      }
+
+      progress {
+        width: 100%;
+        height: 12px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(148, 163, 184, 0.3);
+      }
+
+      progress::-webkit-progress-bar {
+        background: rgba(148, 163, 184, 0.18);
+      }
+
+      progress::-webkit-progress-value {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      }
+
+      progress::-moz-progress-bar {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      }
+
+      .console {
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        background: rgba(15, 23, 42, 0.7);
+        border-radius: 16px;
+        padding: 1.25rem;
+        border: 1px solid rgba(94, 234, 212, 0.18);
+        min-height: 120px;
+        display: grid;
+        gap: 0.6rem;
+      }
+
+      .console p {
+        margin: 0;
+        color: rgba(226, 232, 240, 0.8);
+      }
+
+      .console strong {
+        color: rgba(94, 234, 212, 0.9);
+      }
+
+      .report {
+        display: grid;
+        gap: 1.5rem;
+        line-height: 1.7;
+      }
+
+      .report h2 {
+        margin: 0;
+        font-size: 1.8rem;
+      }
+
+      .report-section {
+        border-left: 3px solid rgba(56, 189, 248, 0.45);
+        padding-left: 1rem;
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .report-section h3 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+
+      .sources {
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .sources a {
+        color: rgba(129, 140, 248, 0.95);
+        text-decoration: none;
+      }
+
+      .sources a:hover {
+        text-decoration: underline;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      footer {
+        text-align: center;
+        font-size: 0.85rem;
+        color: rgba(203, 213, 225, 0.6);
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 2.5rem 1rem;
+        }
+
+        .card {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header>
+        <h1>AI Deep Research Agent</h1>
+        <p>
+          Submit a research topic and let the rxpress-powered pipeline orchestrate Firecrawl exploration
+          and OpenAI insight synthesis. Track progress live and review structured reports when complete.
+        </p>
+      </header>
+
+      <section class="card">
+        <form id="research-form">
+          <div class="field-group">
+            <label for="query">Research focus</label>
+            <textarea id="query" name="query" placeholder="e.g. Emerging applications of solid-state batteries in electric aviation"></textarea>
+          </div>
+
+          <div class="form-grid">
+            <div class="field-group">
+              <label for="breadth">Breadth (distinct queries)</label>
+              <input type="number" id="breadth" name="breadth" min="1" max="10" value="4" />
+            </div>
+            <div class="field-group">
+              <label for="depth">Depth (iterations)</label>
+              <input type="number" id="depth" name="depth" min="1" max="5" value="2" />
+            </div>
+          </div>
+
+          <button type="submit">Launch Research</button>
+          <p id="form-error" class="hidden" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="status-card" class="card status-card hidden" aria-live="polite">
+        <div class="status-row">
+          <span class="badge" id="status-badge">Queued</span>
+          <span id="job-id"></span>
+        </div>
+        <progress id="progress" max="100" value="0"></progress>
+        <div class="console" id="status-console">
+          <p><strong>Status:</strong> waiting to start…</p>
+          <p><strong>Depth:</strong> <span id="depth-indicator">0</span></p>
+        </div>
+        <button id="reset-button" type="button" class="hidden">Run Another Research</button>
+      </section>
+
+      <section id="report-card" class="card hidden">
+        <div class="report" id="report-content"></div>
+      </section>
+
+      <footer>
+        Built for the rxpress examples suite. Requires Firecrawl + OpenAI credentials (see README).
+      </footer>
+    </div>
+
+    <script type="module">
+      const form = document.getElementById('research-form');
+      const queryField = document.getElementById('query');
+      const breadthField = document.getElementById('breadth');
+      const depthField = document.getElementById('depth');
+      const statusCard = document.getElementById('status-card');
+      const statusBadge = document.getElementById('status-badge');
+      const progressEl = document.getElementById('progress');
+      const statusConsole = document.getElementById('status-console');
+      const depthIndicator = document.getElementById('depth-indicator');
+      const jobIdEl = document.getElementById('job-id');
+      const reportCard = document.getElementById('report-card');
+      const reportContent = document.getElementById('report-content');
+      const resetButton = document.getElementById('reset-button');
+      const errorEl = document.getElementById('form-error');
+
+      let activeJobId = null;
+      let pollTimer = null;
+
+      init();
+
+      async function init() {
+        await hydrateConfig();
+        form.addEventListener('submit', handleSubmit);
+        resetButton.addEventListener('click', resetForm);
+      }
+
+      async function hydrateConfig() {
+        try {
+          const response = await fetch('/api/research/config');
+          if (!response.ok) return;
+          const config = await response.json();
+          breadthField.min = config.limits.breadth.min;
+          breadthField.max = config.limits.breadth.max;
+          depthField.min = config.limits.depth.min;
+          depthField.max = config.limits.depth.max;
+          breadthField.value = config.defaults.breadth;
+          depthField.value = config.defaults.depth;
+        } catch (error) {
+          console.warn('Failed to load config', error);
+        }
+      }
+
+      async function handleSubmit(event) {
+        event.preventDefault();
+        clearError();
+
+        const payload = {
+          query: queryField.value.trim(),
+          breadth: Number(breadthField.value),
+          depth: Number(depthField.value)
+        };
+
+        if (!payload.query) {
+          return showError('Please provide a research focus.');
+        }
+
+        try {
+          toggleForm(false);
+          setStatus('queued');
+          const response = await fetch('/api/research', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            const problem = await response.json().catch(() => ({ message: 'Request failed' }));
+            throw new Error(problem.message || 'Request failed');
+          }
+
+          const result = await response.json();
+          activeJobId = result.jobId;
+          jobIdEl.textContent = `Job ID: ${activeJobId}`;
+          statusCard.classList.remove('hidden');
+          statusConsole.innerHTML = `<p><strong>Status:</strong> Research starting…</p>`;
+          startPolling();
+        } catch (error) {
+          showError(error.message || 'Unable to start research');
+          toggleForm(true);
+        }
+      }
+
+      function startPolling() {
+        if (!activeJobId) return;
+        pollTimer && clearInterval(pollTimer);
+        pollTimer = setInterval(pollStatus, 2500);
+        pollStatus();
+      }
+
+      async function pollStatus() {
+        if (!activeJobId) return;
+        try {
+          const response = await fetch(`/api/research/${activeJobId}/status`);
+          if (!response.ok) {
+            throw new Error('Status unavailable');
+          }
+          const status = await response.json();
+          updateStatusUI(status);
+          if (status.status === 'completed' && status.reportAvailable) {
+            clearInterval(pollTimer);
+            await loadReport();
+            toggleForm(true);
+            resetButton.classList.remove('hidden');
+          }
+          if (status.status === 'failed') {
+            clearInterval(pollTimer);
+            toggleForm(true);
+            showError(status.error || 'Research failed');
+            statusBadge.textContent = 'Failed';
+          }
+        } catch (error) {
+          console.warn('Polling error', error);
+        }
+      }
+
+      async function loadReport() {
+        try {
+          const response = await fetch(`/api/research/${activeJobId}/report`);
+          if (!response.ok) {
+            throw new Error('Report is not ready yet');
+          }
+          const { report } = await response.json();
+          renderReport(report);
+        } catch (error) {
+          showError(error.message || 'Unable to load report');
+        }
+      }
+
+      function renderReport(report) {
+        reportCard.classList.remove('hidden');
+        reportContent.innerHTML = `
+          <div>
+            <h2>${report.title}</h2>
+            <p>${report.overview}</p>
+          </div>
+          <div class="report-section">
+            <h3>Key Takeaways</h3>
+            <ul>
+              ${report.keyTakeaways.map((item) => `<li>${item}</li>`).join('')}
+            </ul>
+          </div>
+          ${report.sections
+            .map(
+              (section) => `
+            <div class="report-section">
+              <h3>${section.title}</h3>
+              <p>${section.content}</p>
+            </div>
+          `,
+            )
+            .join('')}
+          <div class="report-section">
+            <h3>Sources</h3>
+            <div class="sources">
+              ${report.sources
+                .map((source) => `<a href="${source.url}" target="_blank" rel="noopener noreferrer">${source.title || source.url}</a>`)
+                .join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function updateStatusUI(status) {
+        statusBadge.textContent = status.status.toUpperCase();
+        progressEl.value = status.progress.percentComplete;
+        depthIndicator.textContent = `${status.progress.currentDepth} / ${status.progress.totalDepth}`;
+        statusConsole.innerHTML = `
+          <p><strong>Status:</strong> ${status.status}</p>
+          <p><strong>Depth:</strong> ${status.progress.currentDepth} of ${status.progress.totalDepth}</p>
+          <p><strong>Percent complete:</strong> ${status.progress.percentComplete}%</p>
+        `;
+      }
+
+      function setStatus(label) {
+        statusBadge.textContent = label.toUpperCase();
+        statusCard.classList.remove('hidden');
+      }
+
+      function toggleForm(enabled) {
+        form.querySelector('button[type="submit"]').disabled = !enabled;
+        form.querySelectorAll('input, textarea').forEach((el) => {
+          el.disabled = !enabled;
+        });
+      }
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+      }
+
+      function clearError() {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
+      }
+
+      function resetForm() {
+        activeJobId = null;
+        pollTimer && clearInterval(pollTimer);
+        statusCard.classList.add('hidden');
+        reportCard.classList.add('hidden');
+        reportContent.innerHTML = '';
+        toggleForm(true);
+        resetButton.classList.add('hidden');
+      }
+    </script>
+  </body>
+</html>

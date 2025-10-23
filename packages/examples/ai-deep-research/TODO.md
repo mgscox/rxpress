@@ -1,0 +1,28 @@
+# AI Deep Research (rxpress) TODO
+
+- [x] Establish project scaffolding for the new example (package manifest, tsconfig, lint/build scripts, env samples, README update).
+- [x] Implement a JSON-backed KV helper under `src/services` that decorates `helpers.createMemoryKv`, loads on first access, writes on mutation, and stores files in `packages/examples/ai-deep-research/data/`.
+- [x] Design shared TypeScript types/interfaces for research jobs, state snapshots, and external service payloads.
+- [x] Translate Motia flow into rxpress events (keep each handler in its own file and load via `rxpress.load`):
+  - [x] Event to generate search queries and initialize persisted state.
+  - [x] Event to execute Firecrawl searches for each query (respecting rate limits) and persist raw results.
+  - [x] Event to batch-extract page content, storing full text while emitting truncated summaries.
+  - [x] Event to analyze content with OpenAI, update depth progress, and decide on follow-up queries.
+  - [x] Event to handle follow-up depth requests and re-trigger the search pipeline until depth is satisfied.
+  - [x] Event to compile the final report once all analyses complete and persist final output.
+- [x] Implement rxpress API/HTTP handlers (declare `responseSchema`/Zod for validation and rely on event emits):
+  - [x] POST `/api/research` to submit jobs (breadth/depth/query) and kick off the pipeline.
+  - [x] GET `/api/research/status/:id` (or query param) to expose current progress metrics and completion flag.
+  - [x] GET `/api/research/report/:id` to return the compiled report payload.
+  - [x] Supply a health/config endpoint for the Web UI to discover limits and defaults.
+- [x] Build Web UI assets served statically by rxpress (serve via `http` handlers with `mime` support):
+  - [x] Create a styled single-page form with query, breadth, and depth inputs plus basic validation.
+  - [x] Implement client-side fetch logic to call the start endpoint, poll status, and fetch the final report.
+  - [x] Render progress (depth/current percentage) and final report sections with source lists.
+  - [x] Include lightweight design polish (layout, responsive typography, loading states).
+- [x] Wire up dependency injection/configuration for OpenAI + Firecrawl with simplified env handling and sane defaults.
+- [x] Add error handling and logging across events and HTTP handlers, reusing `ctx.logger` + tracing, including retries/backoff for Firecrawl failures.
+- [x] Provide smoke/integration tests (or scripted manual test instructions) covering job submission, depth loop, and report retrieval.
+- [x] Document setup (env vars, Firecrawl/OpenAI requirements), run commands, and Web UI usage in `README.md`.
+- [x] Verify example with `npm test --workspace rxpress` (or targeted tests) and ensure lint/build succeed; confirm `rxpress.load` picks up compiled handler files.
+- [x] Ensure every event/API handler lives in a standalone file with the appropriate suffix (`*.event.ts`, `*.handler.ts`) so the built `*.js` versions are auto-discovered from the configured directories.
