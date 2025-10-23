@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rxpress-bridge"
+version = "0.1.0"
+description = "Experimental Python helper for hosting rxpress gRPC handlers"
+requires-python = ">=3.10"
+dependencies = [
+  "grpcio>=1.66.0",
+  "grpcio-tools>=1.66.0",
+  "protobuf>=5.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.3",
+  "ruff>=0.6.0",
+  "mypy>=1.11.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

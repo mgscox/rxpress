@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: rxpress-bridge
+Version: 0.1.0
+Summary: Experimental Python helper for hosting rxpress gRPC handlers
+Requires-Python: >=3.10
+Requires-Dist: grpcio>=1.66.0
+Requires-Dist: grpcio-tools>=1.66.0
+Requires-Dist: protobuf>=5.27.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3.3; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+Requires-Dist: mypy>=1.11.0; extra == "dev"

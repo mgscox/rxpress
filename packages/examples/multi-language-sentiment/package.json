@@ -10,6 +10,7 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "node --import ./scripts/register-ts-node.mjs --test \"src/__tests__/**/*.test.ts\"",
+    "smoke": "node scripts/smoke.cjs",
     "proto:gen": "npm run proto:gen:ts && npm run proto:gen:py",
     "proto:gen:ts": "node -e \"console.log('TypeScript uses proto-loader at runtime; no generation needed.')\"",
     "proto:gen:py": "python -m grpc_tools.protoc --proto_path=./proto --python_out=python --grpc_python_out=python sentiment.proto",
