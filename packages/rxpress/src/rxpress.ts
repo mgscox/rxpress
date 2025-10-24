@@ -455,4 +455,10 @@ export namespace rxpress {
       logger: activeLogger!,
     });
   }
+
 }
+
+export const grpc = {
+  invoke: GrpcBridgeService.invoke,
+  ready: GrpcBridgeService.ready,
+};

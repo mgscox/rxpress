@@ -1,0 +1,8 @@
+# Build artifacts
+bin/
+*.exe
+*.out
+*.test
+
+# Go module cache / tools
+.tools/

@@ -1,28 +1,26 @@
-# Multi-language Sentiment (rxpress + Python gRPC bridge)
+# Multi-language Sentiment (rxpress + Python / Go gRPC bridges)
 
-This example shows how `rxpress` (TypeScript) can outsource request handling to a Python service over
-the built-in gRPC bridge. It’s intentionally lightweight so you can adapt the pattern for your own
-mixed-language projects.
+This workspace shows how `rxpress` can call out to gRPC handlers implemented in other
+languages. The same HTTP endpoint can fan out to either a Python or a Go sentiment
+service simply by flipping a selector in the UI (or the request payload).
 
 ---
 
-## Flow
+## Flow overview
 
 ```
-Browser/UI  ──POST /api/sentiment────────────┐
-                                             │ rxpress (HTTP)
-rxpress (TS) ──Invoker.Invoke───────────────▶│ Python gRPC service
-                                             │
-rxpress (TS) ◀─ControlPlane.Connect──────────┘ (log/emit/kv feedback)
+Browser ──POST /api/sentiment──┐
+                               │  rxpress (TypeScript)
+                               │   • hosts HTTP + UI
+                               │   • exposes ControlPlane (bind)
+                               │   • forwards invoke() over gRPC
+                               │
+                 Python bridge ├── handler_bridge.proto → analyse()
+                 Go bridge     ┘   (shares logging / emit / kv helpers)
 ```
 
-1. The UI (or `curl`) submits text to `/api/sentiment`.
-2. The rxpress route is configured with `kind: 'grpc'`, so it forwards the request over the handler
-   bridge to Python.
-3. The Python helper (`rxpress-bridge-python`) executes the handler, uses keyword heuristics to score
-   the sentiment, and returns an HTTP-style payload.
-4. Control-plane messages allow the Python code to log, emit events, and access KV state just like an
-   in-process handler.
+The bridges connect back to rxpress via the control plane so they can log, emit
+events, and use the same KV APIs as in-process handlers.
 
 ---
 
@@ -31,17 +29,19 @@ rxpress (TS) ◀─ControlPlane.Connect──────────┘ (log/em
 ```
 packages/examples/multi-language-sentiment/
 ├── src/
-│   ├── api/sentiment.handler.ts     # gRPC route config (kind: 'grpc')
-│   ├── http/index.handler.ts        # Serves the tiny Web UI
-│   └── main.ts                      # Bootstraps rxpress + gRPC bridge registry
-├── public/index.html                # Form + JSON output
-├── python/sentiment/server.py       # Launches the Python bridge handler
-├── .env.example                     # Env vars for HTTP + gRPC bridge
-└── README.md                        # This guide
+│   ├── api/sentiment.handler.ts   # Local route that calls grpc.invoke dynamically
+│   ├── http/index.handler.ts      # Serves the single-page HTML UI
+│   └── main.ts                    # Bootstraps rxpress + registry for each backend
+├── public/index.html              # Tailwind-inspired UI with backend selector
+├── python/sentiment/server.py     # Python reference implementation (rxpress-bridge-python)
+├── scripts/smoke.cjs              # Builds, runs, and verifies both backends
+└── README.md                      # You are here
 ```
 
-The Python helper lives under `packages/rxpress-bridge-python/` and exports utilities for hosting
-handlers.
+Companion bridge helper packages:
+
+- `packages/rxpress-bridge-python/` – async-friendly helper used by the Python bridge.
+- `packages/rxpress-bridge-go/` – newly added Go helper + sample sentiment server.
 
 ---
 
@@ -49,133 +49,137 @@ handlers.
 
 - Node.js ≥ 20
 - Python ≥ 3.10 (with `venv`)
-- `grpcio`, `grpcio-tools`, `protobuf`, and `rxpress-bridge` (installed below)
+- Go ≥ 1.22
+
+Install JS deps once from the repository root:
+
+```bash
+npm install
+```
 
 ---
 
-## Setup & run
+## Python bridge setup
 
-1. **Install Node dependencies** (once at repo root)
+```bash
+# 1. Install the Python helper (editable)
+cd packages/rxpress-bridge-python
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+deactivate
 
-   ```bash
-   npm install
-   ```
+# 2. Install the example's Python dependencies
+cd ../examples/multi-language-sentiment
+python -m venv .venv
+source .venv/bin/activate
+pip install -r python/requirements.txt
+# expose the helper inside this virtualenv
+pip install -e ../../rxpress-bridge-python
+```
 
-2. **Create a Python virtual environment**
+Run the Python backend:
 
-   ```bash
-   cd packages/rxpress-bridge-python
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -e .  # installs rxpress-bridge helper in editable mode
-   deactivate
-   ```
+```bash
+CONTROL_TARGET=127.0.0.1:52070 \
+BRIDGE_BIND=127.0.0.1:52055 \
+python python/sentiment/server.py
+```
 
-3. **Install the Python app requirements**
+---
 
-   ```bash
-   cd ../examples/multi-language-sentiment
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r python/requirements.txt
-   # make the helper visible inside this venv as well
-    pip install -e ../rxpress-bridge-python
-   ```
+## Go bridge setup
 
-4. **Start the Python bridge service**
+The Go bridge lives in `packages/rxpress-bridge-go/` and exports a reusable `bridge.Serve`
+API. A sentiment sample is included under `cmd/sentiment`.
 
-   ```bash
-   CONTROL_TARGET=127.0.0.1:50070 \
-   BRIDGE_BIND=127.0.0.1:50055 \
-   python python/sentiment/server.py
-   ```
+```bash
+cd packages/rxpress-bridge-go
+# optional: cache dependencies
+go mod download
 
-5. **In another terminal, start the rxpress app**
+# run the bridge (defaults match the rxpress config)
+BRIDGE_BIND=127.0.0.1:52065 \
+CONTROL_TARGET=127.0.0.1:52070 \
+go run ./cmd/sentiment
+```
 
-   ```bash
-   npm run dev --workspace @newintel/multi-language-sentiment
-   ```
+You can also build a binary:
 
-6. **Test it**
-   - Visit <http://localhost:3004/> and submit text.
-   - Or run:
-     ```bash
-     curl -s http://localhost:3004/api/sentiment \
-      -H 'content-type: application/json' \
-      -d '{"text":"I love this framework"}' | jq
-     ```
+```bash
+GOOS=linux GOARCH=amd64 go build -o ./bin/sentiment ./cmd/sentiment
+./bin/sentiment
+```
 
-   ```
+---
 
-   ```
+## Start rxpress & UI
 
-### Automated smoke test
+In a separate shell, start the example (uses ts-node in dev mode):
 
-Once you have built the example (`npm run build --workspace @newintel/multi-language-sentiment`),
-you can run the bundled smoke test. It starts the compiled rxpress server and the Python bridge,
-sends a request, and tears everything down automatically. The script enforces timeouts so it won't
-hang if something goes wrong.
+```bash
+npm run dev --workspace @newintel/multi-language-sentiment
+```
+
+With both bridges offline you can still hit the UI at <http://localhost:3004/>, but
+requests will fail. Start whichever backend(s) you want and re-submit.
+
+### Selecting a backend
+
+The UI exposes a dropdown (Python or Go). Programmatic callers can include the
+`backend` property in the JSON body:
+
+```bash
+curl -s http://localhost:3004/api/sentiment \
+  -H 'content-type: application/json' \
+  -d '{"text":"I love gRPC bridges","backend":"go"}' | jq
+```
+
+The response mirrors the backend provider and always echoes the selected `backend`.
+
+---
+
+## Automated smoke test
+
+After building the example, the smoke script launches rxpress once and exercises both
+bridges sequentially. Each process is wrapped with timeouts so it shuts down cleanly.
 
 ```bash
 npm run build --workspace @newintel/multi-language-sentiment
 npm run smoke --workspace @newintel/multi-language-sentiment
 ```
 
-You should see a JSON response with polarity, confidence, and per-sentence breakdown.
-
 ---
 
-## Python handler snippet
+## Environment variables
 
-```python
-from rxpress_bridge import serve
+`.env.example` documents the key switches:
 
-async def analyse(method, payload, meta, ctx):
-    body = payload.get('body') or {}
-    text = body.get('text', '')
-    score = _score(text)
-    await ctx.log('info', 'sentiment scored', {'score': score})
-    return {
-        'status': 200,
-        'body': {
-            'text': text,
-            'polarity': score,
-            'confidence': abs(score) if score else 0.3,
-        },
-    }
+| Variable           | Description                                   | Default           |
+| ------------------ | --------------------------------------------- | ----------------- |
+| `PORT`             | HTTP port for rxpress                         | `3004`            |
+| `GRPC_BRIDGE_BIND` | Address rxpress listens on for bridge control | `127.0.0.1:52070` |
+| `PYTHON_GRPC_PORT` | Python bridge listening port                  | `50055`           |
+| `GO_GRPC_PORT`     | Go bridge listening port                      | `52065`           |
+| `OTEL_ENABLE`      | Enable OpenTelemetry export                   | `false`           |
 
-if __name__ == '__main__':
-    app = serve(
-        bind='127.0.0.1:50055',
-        handlers={'sentiment.analyse': analyse},
-        control_target='127.0.0.1:50070',
-    )
-    app.wait_forever()
-```
-
-The real script (`python/sentiment/server.py`) includes the keyword heuristics and UI-friendly
-breakdown that ship with the example.
-
----
-
-## Customisation ideas
-
-- Swap the heuristic model for OpenAI, HuggingFace, or spaCy.
-- Add event listeners on the rxpress side (`ctx.emit`) to react to sentiment results.
-- Use TLS for the bridge by enabling `config.grpc.tls` in `main.ts` and passing the same credentials
-  to the Python `grpc.secure_channel`.
-- Implement similar helpers in Go/Rust using `handler_bridge.proto`; the Python helper is a reference
-  implementation.
+Set `PYTHON_GRPC_HOST` / `GO_GRPC_HOST` if the bridges run on another machine.
 
 ---
 
 ## Troubleshooting
 
-| Issue                                 | Likely cause                                     | Fix                                                                                                            |
-| ------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `404 Not Found` on `/`                | rxpress server not running or handlers not added | Check the terminal running `npm run dev` for errors.                                                           |
-| gRPC `UNAVAILABLE` / `ECONNREFUSED`   | Python bridge not running or ports mismatch      | Ensure `BRIDGE_BIND` matches `GRPC_PORT` and `CONTROL_TARGET` matches `GRPC_BRIDGE_BIND`.                      |
-| `ModuleNotFoundError: rxpress_bridge` | Helper not installed in venv                     | Run `pip install -e ../../rxpress-bridge-python`.                                                              |
-| Logs not appearing / emit failing     | Control-plane connection not established         | Verify `CONTROL_TARGET` points to the rxpress `bind` address and that the app started with `GRPC_BRIDGE_BIND`. |
+| Issue / Error                          | Likely cause                                   | Fix                                                                                       |
+| -------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `12 UNIMPLEMENTED: Method not found!`  | Bridge started without registering the handler | Ensure `sentiment.analyse` is present in the handlers map.                                |
+| `connect ECONNREFUSED 127.0.0.1:52070` | Bridge cannot reach rxpress control plane      | Confirm rxpress is running with `GRPC_BRIDGE_BIND` and the bridge `CONTROL_TARGET` match. |
+| Response `backend` ≠ requested backend | Old cached UI payload                          | Refresh the page or clear the form before submitting.                                     |
+| Smoke test hangs                       | One of the bridge processes never logs ready   | Check the console output—timeouts are enforced but large Go builds may need more time.    |
 
-Enjoy experimenting with multi-language handler orchestration!
+---
+
+## Next steps
+
+- Add more languages by porting the handler bridge (`handler_bridge.proto`) to C#, Rust, etc.
+- Swap the heuristic scoring for a proper ML model or an LLM call.
+- Use the `ctx.emit` helper in the bridge to publish events back into rxpress for observability.

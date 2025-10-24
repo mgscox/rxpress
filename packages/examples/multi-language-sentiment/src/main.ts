@@ -25,6 +25,10 @@ async function bootstrap() {
   const grpcHost = ConfigService.env('GRPC_HOST', '127.0.0.1');
   const grpcPort = ConfigService.env('GRPC_PORT', '50055');
   const grpcBridgeBind = ConfigService.env('GRPC_BRIDGE_BIND', '127.0.0.1:50070');
+  const pythonHost = ConfigService.env('PYTHON_GRPC_HOST', grpcHost);
+  const pythonPort = ConfigService.env('PYTHON_GRPC_PORT', grpcPort);
+  const goHost = ConfigService.env('GO_GRPC_HOST', grpcHost);
+  const goPort = ConfigService.env('GO_GRPC_PORT', '52065');
 
   rxpress.init({
     config: {
@@ -36,7 +40,7 @@ async function bootstrap() {
         enabled: true,
         title: 'Multi-language Sentiment API',
         version: '0.1.0',
-        description: 'Sentiment analysis via rxpress + Python gRPC bridge',
+        description: 'Sentiment analysis via rxpress + multi-language gRPC bridges',
         path: '/openapi.json',
       },
       ...(metricsConfig ? { metrics: metricsConfig } : {}),
@@ -45,7 +49,12 @@ async function bootstrap() {
         registry: {
           'python-sentiment': {
             endpoints: [
-              { target: `${grpcHost}:${grpcPort}` },
+              { target: `${pythonHost}:${pythonPort}` },
+            ],
+          },
+          'go-sentiment': {
+            endpoints: [
+              { target: `${goHost}:${goPort}` },
             ],
           },
         },

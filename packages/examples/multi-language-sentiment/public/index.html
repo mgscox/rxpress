@@ -41,7 +41,7 @@
         gap: 1rem;
       }
 
-      textarea, input {
+      textarea, input, select {
         border-radius: 12px;
         padding: 0.85rem 1rem;
         border: 1px solid rgba(148, 163, 184, 0.3);
@@ -77,7 +77,7 @@
     <div class="app">
       <header>
         <h1>Multi-language Sentiment Demo</h1>
-        <p>Requests are routed through the rxpress gRPC bridge to a Python handler.</p>
+        <p>Send requests through rxpress and pick a backend gRPC bridge (Python or Go) to analyse the sentiment.</p>
       </header>
 
       <form id="sentiment-form">
@@ -88,6 +88,13 @@
         <label>
           <span>Language hint (optional, e.g. en, es)</span>
           <input id="language" name="language" placeholder="auto" />
+        </label>
+        <label>
+          <span>Backend</span>
+          <select id="backend" name="backend">
+            <option value="python">Python (async bridge)</option>
+            <option value="go">Go (static binary bridge)</option>
+          </select>
         </label>
         <button type="submit">Analyse</button>
         <p id="error" class="hidden" role="alert"></p>
@@ -103,6 +110,7 @@
       const form = document.getElementById('sentiment-form');
       const textField = document.getElementById('text');
       const languageField = document.getElementById('language');
+      const backendField = document.getElementById('backend');
       const errorEl = document.getElementById('error');
       const resultSection = document.getElementById('result');
       const resultJson = document.getElementById('result-json');
@@ -115,6 +123,7 @@
         const payload = {
           text: textField.value.trim(),
           language: languageField.value.trim() || undefined,
+          backend: backendField.value,
         };
 
         if (!payload.text) {

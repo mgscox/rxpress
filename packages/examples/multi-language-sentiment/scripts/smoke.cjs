@@ -6,6 +6,8 @@ const { resolve, join } = require('node:path');
 const { existsSync } = require('node:fs');
 
 const exampleRoot = resolve(__dirname, '..');
+const TIMEOUT_SEC = Number(process.env.SMOKE_TIMEOUT_SEC ?? '45');
+
 const defaultPython = (() => {
   const binDir = process.platform === 'win32' ? 'Scripts' : 'bin';
   const binary = process.platform === 'win32' ? 'python.exe' : 'python';
@@ -21,32 +23,35 @@ const CONFIG = {
   httpPort: 3180,
   grpcBridgeBind: '127.0.0.1:52070',
   pythonInvoker: '127.0.0.1:52055',
+  goInvoker: '127.0.0.1:52065',
 };
 
 let pythonProc;
+let goProc;
 let nodeProc;
 const toCleanup = [];
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
-process.on('exit', shutdown);
+process.on('SIGINT', () => void shutdown());
+process.on('SIGTERM', () => void shutdown());
+process.on('exit', () => void shutdown());
 
 async function main() {
   try {
     await startNode();
-    await startPython();
-    await verifyRequest();
+    await runBackend('python', startPython);
+    await runBackend('go', startGo);
     console.log('Smoke test succeeded.');
   } catch (error) {
     console.error('Smoke test failed:', error);
     process.exitCode = 1;
   } finally {
-    shutdown();
+    await shutdown();
   }
 }
 
 async function startNode() {
-  nodeProc = spawn('node', ['dist/main.js'], {
+  const command = `timeout --foreground ${TIMEOUT_SEC}s node dist/main.js`;
+  nodeProc = spawn('bash', ['-lc', command], {
     cwd: exampleRoot,
     env: {
       ...process.env,
@@ -54,15 +59,20 @@ async function startNode() {
       GRPC_HOST: '127.0.0.1',
       GRPC_PORT: CONFIG.pythonInvoker.split(':')[1],
       GRPC_BRIDGE_BIND: CONFIG.grpcBridgeBind,
+      PYTHON_GRPC_HOST: CONFIG.pythonInvoker.split(':')[0],
+      PYTHON_GRPC_PORT: CONFIG.pythonInvoker.split(':')[1],
+      GO_GRPC_HOST: CONFIG.goInvoker.split(':')[0],
+      GO_GRPC_PORT: CONFIG.goInvoker.split(':')[1],
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  toCleanup.push(() => killProcess(nodeProc));
+  toCleanup.push(() => terminate(nodeProc, 'rxpress'));
   await waitForOutput(nodeProc, /multi-language-sentiment example running/, 10000, 'rxpress');
 }
 
 async function startPython() {
-  pythonProc = spawn(PYTHON_BIN, ['python/sentiment/server.py'], {
+  const execute = `timeout --foreground ${TIMEOUT_SEC}s ${JSON.stringify(PYTHON_BIN)} python/sentiment/server.py`;
+  pythonProc = spawn('bash', ['-lc', execute], {
     cwd: exampleRoot,
     env: {
       ...process.env,
@@ -72,15 +82,47 @@ async function startPython() {
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  toCleanup.push(() => killProcess(pythonProc));
+  toCleanup.push(() => terminate(pythonProc, 'python'));
   await waitForOutput(pythonProc, /Sentiment bridge listening/, 10000, 'python');
 }
 
-async function verifyRequest() {
+async function startGo() {
+  const bridgeRoot = resolve(exampleRoot, '..', '..', 'rxpress-bridge-go');
+  const cmd = `timeout --foreground ${TIMEOUT_SEC}s go run ./cmd/sentiment`;
+  goProc = spawn('bash', ['-lc', cmd], {
+    cwd: bridgeRoot,
+    env: {
+      ...process.env,
+      BRIDGE_BIND: CONFIG.goInvoker,
+      CONTROL_TARGET: CONFIG.grpcBridgeBind,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  toCleanup.push(() => terminate(goProc, 'go'));
+  await waitForOutput(goProc, /Go sentiment bridge listening/, 15000, 'go');
+}
+
+async function runBackend(id, starter) {
+  await starter();
+  try {
+    await verifyRequest(id);
+  } finally {
+    const proc = id === 'python' ? pythonProc : goProc;
+    await terminate(proc, id);
+    if (id === 'python') {
+      pythonProc = undefined;
+    } else {
+      goProc = undefined;
+    }
+    await delay(200);
+  }
+}
+
+async function verifyRequest(backend) {
   const response = await fetch(`http://127.0.0.1:${CONFIG.httpPort}/api/sentiment`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text: 'I love this bridge demo' }),
+    body: JSON.stringify({ text: 'I love this bridge demo', backend }),
   });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
@@ -89,6 +131,10 @@ async function verifyRequest() {
   if (!body?.provider) {
     console.error('Response payload:', body);
     throw new Error('Unexpected response payload');
+  }
+  if (body.backend !== backend) {
+    console.error('Response payload:', body);
+    throw new Error(`backend mismatch – expected ${backend}`);
   }
 }
 
@@ -135,41 +181,67 @@ async function waitForOutput(proc, matcher, timeoutMs, label) {
   });
 }
 
-function shutdown() {
+async function shutdown() {
   while (toCleanup.length) {
     try {
       const fn = toCleanup.pop();
-      fn && fn();
+      const result = fn && fn();
+      if (result instanceof Promise) {
+        await result;
+      }
     } catch (error) {
       console.error('Error during shutdown:', error);
     }
   }
 }
 
-function killProcess(proc) {
-  if (!proc || proc.killed) {
+async function terminate(proc, label) {
+  if (!proc) {
     return;
   }
 
-  try {
-    proc.kill('SIGINT');
-  } catch (error) {
-    console.error('Failed to send SIGINT:', error);
+  if (proc.exitCode !== null || proc.signalCode) {
+    return;
   }
 
-  setTimeout(() => {
-    if (!proc.killed) {
-      try {
-        proc.kill('SIGTERM');
-      } catch (error) {
-        console.error('Failed to send SIGTERM:', error);
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      clearTimeout(fallback);
+      resolve();
+    };
+
+    const fallback = setTimeout(() => {
+      if (proc.exitCode === null && !proc.killed) {
+        try {
+          proc.kill('SIGKILL');
+        } catch (error) {
+          console.error(`Failed to send SIGKILL to ${label}:`, error);
+        }
       }
+    }, 2000).unref();
+
+    proc.once('exit', cleanup);
+
+    try {
+      proc.kill('SIGINT');
+    } catch (error) {
+      console.error(`Failed to send SIGINT to ${label}:`, error);
     }
-  }, 2000).unref();
+
+    setTimeout(() => {
+      if (proc.exitCode === null && !proc.killed) {
+        try {
+          proc.kill('SIGTERM');
+        } catch (error) {
+          console.error(`Failed to send SIGTERM to ${label}:`, error);
+        }
+      }
+    }, 500).unref();
+  });
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.error(error);
   process.exitCode = 1;
-  shutdown();
+  await shutdown();
 });
