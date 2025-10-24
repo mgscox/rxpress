@@ -10,8 +10,15 @@ This guide walks through the minimal steps required to bootstrap an application 
 
 ## Install
 
+**NOTE:** `rxpress` is not yet pushed to NPM as it is not considered ready for production use. For now clone the repository, build locally, then pack and install.
+
 ```bash
-npm install rxpress
+cd ~/my-dev-area
+git clone https://github.com/mgscox/rxpress.git
+npm install
+npm pack --workspace rxpress
+cd ~/my-dev-area/my-app
+npm install ~/my-dev-area/rxpress/rxpress*.tgz
 ```
 
 ## Bootstrapping

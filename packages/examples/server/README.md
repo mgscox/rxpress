@@ -1,4 +1,4 @@
-# Example Server (@newintel/server)
+# Example Server (@rxpress/server)
 
 This package hosts the reference application used throughout the `rxpress` repository. It demonstrates how consumers can wire the library into a real HTTP server, expose APIs, serve static assets, visualise the topology, and push telemetry to the bundled observability stack.
 

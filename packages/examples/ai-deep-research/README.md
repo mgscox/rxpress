@@ -41,8 +41,8 @@ cp packages/examples/ai-deep-research/.env.example .env
 # add OPENAI_API_KEY / FIRECRAWL_API_KEY
 
 npm install
-npm run build --workspace @newintel/ai-deep-research
-npm run start --workspace @newintel/ai-deep-research
+npm run build --workspace @rxpress/ai-deep-research
+npm run start --workspace @rxpress/ai-deep-research
 ```
 
 The service defaults to `http://localhost:3003`. Visit the root path to launch the Web UI.
@@ -93,16 +93,16 @@ On failures (missing credentials, external API issues) the job status flips to `
 ## Development commands
 
 ```bash
-npm run dev --workspace @newintel/ai-deep-research   # ts-node + live reload main entry
-npm run test --workspace @newintel/ai-deep-research  # node --test via ts-node
-npm run lint --workspace @newintel/ai-deep-research  # eslint over src
-npm run build --workspace @newintel/ai-deep-research # compile to dist/
+npm run dev --workspace @rxpress/ai-deep-research   # ts-node + live reload main entry
+npm run test --workspace @rxpress/ai-deep-research  # node --test via ts-node
+npm run lint --workspace @rxpress/ai-deep-research  # eslint over src
+npm run build --workspace @rxpress/ai-deep-research # compile to dist/
 ```
 
 ## Smoke test recipe
 
 1. Populate `.env` with valid `OPENAI_API_KEY` and `FIRECRAWL_API_KEY`.
-2. Run `npm run dev --workspace @newintel/ai-deep-research`.
+2. Run `npm run dev --workspace @rxpress/ai-deep-research`.
 3. Navigate to `http://localhost:3003/` and submit a topic (e.g. _“Impacts of low-earth-orbit satellites on agriculture monitoring”_).
 4. Confirm the status badge advances from `QUEUED` → `RUNNING` and the progress bar moves.
 5. Verify the final report renders with sections, takeaways, and source links.

@@ -118,7 +118,7 @@ GOOS=linux GOARCH=amd64 go build -o ./bin/sentiment ./cmd/sentiment
 In a separate shell, start the example (uses ts-node in dev mode):
 
 ```bash
-npm run dev --workspace @newintel/multi-language-sentiment
+npm run dev --workspace @rxpress/multi-language-sentiment
 ```
 
 With both bridges offline you can still hit the UI at <http://localhost:3004/>, but
@@ -145,8 +145,8 @@ After building the example, the smoke script launches rxpress once and exercises
 bridges sequentially. Each process is wrapped with timeouts so it shuts down cleanly.
 
 ```bash
-npm run build --workspace @newintel/multi-language-sentiment
-npm run smoke --workspace @newintel/multi-language-sentiment
+npm run build --workspace @rxpress/multi-language-sentiment
+npm run smoke --workspace @rxpress/multi-language-sentiment
 ```
 
 ---

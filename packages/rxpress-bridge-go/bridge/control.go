@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/newintel/rxpress-bridge-go/internal/pb/proto"
+	pb "github.com/rxpress/rxpress-bridge-go/internal/pb/proto"
 )
 
 type ctrlResult struct {

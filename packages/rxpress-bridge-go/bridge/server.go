@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "github.com/newintel/rxpress-bridge-go/internal/pb/proto"
+	pb "github.com/rxpress/rxpress-bridge-go/internal/pb/proto"
 )
 
 type Handler func(ctx context.Context, method string, input map[string]any, meta map[string]any, bridge *Context) (map[string]any, error)

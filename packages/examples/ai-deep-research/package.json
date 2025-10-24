@@ -1,5 +1,5 @@
 {
-  "name": "@newintel/ai-deep-research",
+  "name": "@rxpress/ai-deep-research",
   "version": "0.1.0",
   "description": "Deep research agent example powered by rxpress with Web UI",
   "type": "module",

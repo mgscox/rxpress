@@ -1,7 +1,7 @@
 syntax = "proto3";
 package bridge;
 
-option go_package = "github.com/newintel/rxpress-bridge-go/internal/pb;pb";
+option go_package = "github.com/rxpress/rxpress-bridge-go/internal/pb;pb";
 
 message Meta {
   string trace_id = 1;

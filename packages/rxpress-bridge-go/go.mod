@@ -1,4 +1,4 @@
-module github.com/newintel/rxpress-bridge-go
+module github.com/rxpress/rxpress-bridge-go
 
 go 1.22
 

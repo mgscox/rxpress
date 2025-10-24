@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "npmScope": "newintel",
+  "npmScope": "rxpress",
   "targetDefaults": {},
   "projects": {
     "server": "packages/examples/server"

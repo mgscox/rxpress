@@ -1,5 +1,5 @@
 {
-  "name": "@newintel/multi-language-sentiment",
+  "name": "@rxpress/multi-language-sentiment",
   "version": "0.1.0",
   "description": "Multi-language sentiment analyser example using rxpress with a Python gRPC backend",
   "type": "module",

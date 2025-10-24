@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/newintel/rxpress-bridge-go/internal/pb/proto"
+	pb "github.com/rxpress/rxpress-bridge-go/internal/pb/proto"
 )
 
 type Context struct {

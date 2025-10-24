@@ -91,8 +91,8 @@ Comprehensive usage guides (routing, events, cron, observability, Next.js integr
 ## Local development
 
 ```bash
-git clone https://github.com/mgscox/newintel.git
-cd newintel
+git clone https://github.com/mgscox/rxpress.git
+cd rxpress
 npm install
 
 # run the example server (listens on PORT from .env or 3002)

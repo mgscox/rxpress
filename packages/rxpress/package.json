@@ -22,7 +22,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mgscox/newintel.git"
+    "url": "git+https://github.com/mgscox/rxpress.git"
   },
   "scripts": {
     "test": "node --loader ts-node/esm ./__tests__/run.ts",
@@ -30,9 +30,9 @@
     "clean": "rimraf dist"
   },
   "bugs": {
-    "url": "https://github.com/mgscox/newintel/issues"
+    "url": "https://github.com/mgscox/rxpress/issues"
   },
-  "homepage": "https://github.com/mgscox/newintel#readme",
+  "homepage": "https://github.com/mgscox/rxpress#readme",
   "devDependencies": {
     "@types/cookie-session": "^2.0.49",
     "@types/helmet": "^0.0.48",

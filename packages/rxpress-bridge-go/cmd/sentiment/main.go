@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newintel/rxpress-bridge-go/bridge"
+	"github.com/rxpress/rxpress-bridge-go/bridge"
 )
 
 var (

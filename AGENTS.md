@@ -10,7 +10,7 @@
 
 - Install dependencies once via `npm install` (root). Use `npm run build --workspace rxpress` to compile the library and `npm run build` inside `packages/examples/server` to emit its TypeScript output.
 - Execute all library tests with `npm test --workspace rxpress`; the suite covers helper examples, HTTP routing, and cron/event orchestration.
-- Example server: develop with `npx nx run server:dev`, build using `npm run build --workspace @newintel/server`, and start compiled output via `npm run start --workspace @newintel/server`.
+- Example server: develop with `npx nx run server:dev`, build using `npm run build --workspace @rxpress/server`, and start compiled output via `npm run start --workspace @rxpress/server`.
 
 ## Coding Style & Naming Conventions
 
