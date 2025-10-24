@@ -2,6 +2,14 @@
 
 This repository hosts the `rxpress` runtime library together with a reference application that demonstrates how to assemble event-driven HTTP APIs, static assets, websockets, cron jobs, and Next.js pages under a single Express server. The workspace is managed with npm workspaces + Lerna and ships its own linting, testing, and observability stack.
 
+---
+
+Very much a Beta / Concept - do NOT use for production (yet)!
+
+`rxpress` can be packaged, but is not yet pushed to NPM
+
+---
+
 ## Packages
 
 | Package                                                  | Description                                                                                                                                            |
@@ -98,7 +106,7 @@ curl http://localhost:3002/api/v1/example
 
 ```bash
 # compile both packages
-lerna run build
+npm run build
 
 # run the rxpress test suite
 npm test --workspace rxpress
